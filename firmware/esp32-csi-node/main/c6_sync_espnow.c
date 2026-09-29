@@ -16,6 +16,9 @@
 
 #include "sdkconfig.h"
 #include "c6_sync_espnow.h"
+#ifdef CONFIG_ESPNOW_ILLUM_TX
+#include "espnow_illum.h"   /* spike: shares this module's send callback */
+#endif
 #include "esp_log.h"
 #include "esp_now.h"
 #include "esp_wifi.h"
@@ -162,6 +165,11 @@ static void on_send(const esp_now_send_info_t *tx_info, esp_now_send_status_t st
 {
     (void)tx_info;
     if (status != ESP_NOW_SEND_SUCCESS) s_tx_fail++;
+#ifdef CONFIG_ESPNOW_ILLUM_TX
+    /* ESP-NOW has one send callback; the illuminator spike sends to the same
+     * broadcast peer, so its completions arrive here too. */
+    espnow_illum_on_send(tx_info, status);
+#endif
 }
 #else
 static void on_send(const uint8_t *mac, esp_now_send_status_t status)
