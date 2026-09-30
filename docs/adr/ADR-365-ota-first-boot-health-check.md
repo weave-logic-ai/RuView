@@ -1,6 +1,6 @@
 # ADR-365: An OTA'd image confirms itself with a bounded health check, or rolls back
 
-**Status:** Accepted (host-tested and built for S3 and C6; not yet hardware-verified)
+**Status:** Accepted. Hardware-verified on one ESP32-S3 (node 4), 2026-09-29. The C6 is built but not yet hardware-verified.
 **Date:** 2026-09-29
 **Numbering:** ADR-364 is the highest number on any branch at the time of
 writing. If another branch also takes 365, renumber whichever merges second.
@@ -159,6 +159,29 @@ When the build has no `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` (the 8 MB S3 and
 - ESP-IDF v5.5 S3 and C6 builds with rollback enabled link
   `esp_ota_mark_app_valid_cancel_rollback` (verified with `nm`). A build is not
   hardware evidence.
-- The httpd overflow is MEASURED on hardware (node 4, above). The fix is not
-  yet hardware-verified: no OTA has yet completed on this firmware.
-- Hardware verification is pending. The procedure is in RUNBOOK §2.1.
+- The httpd overflow is MEASURED on hardware (node 4, above).
+- Hardware verification, MEASURED on 2026-09-29 on node 4 (ESP32-S3
+  `E8:3D:C1:F2:85:D8`, 16 MB, rollback bootloader, OTA key provisioned). The
+  build from this branch was first written over USB. The pushes were made from
+  a Pi 5 with the `sensor-ota-push` cog.
+  1. Positive. An image built from this branch was pushed to `ota_1`: HTTP 200,
+     1,230,848 B in 22 s.
+     - The node logged "httpd stack after POST /ota: 4900 of 8192 bytes never
+       used", so the upload's peak stack use is about 3.3 KB. With the old 1 KB
+       on-stack buffer that is over 4 KB, which is consistent with the
+       overflow.
+     - It rebooted and logged "OTA image pending verify on ota_1".
+     - `/ota/status` then read `ota_state: valid`.
+     - After a hard reset it came back on the same build in `ota_1`, still
+       `valid`, so the update is durable.
+  2. Negative. A `CONFIG_OTA_HEALTH_FORCE_FAIL=y` build was pushed to `ota_0`:
+     HTTP 200.
+     - `/ota/status` showed it running as `pending_verify` for about 30 s.
+     - The node then rebooted and came back on the previous build in `ota_1`,
+       `valid`, so rollback works.
+  3. One push attempt failed mid-upload when a serial capture was opened on the
+     node's USB-Serial-JTAG port at the same moment. The node reset and was
+     unharmed. Don't hold the USB console open while pushing OTA to a
+     USB-attached node.
+- Not yet verified: C6 hardware; the 120 s no-IP timeout path; a real
+  power-cycle (a hard reset via RTS was used instead).
