@@ -1,6 +1,6 @@
 # ADR-365: An OTA'd image confirms itself with a bounded health check, or rolls back
 
-**Status:** Accepted. Hardware-verified on one ESP32-S3 (node 4), 2026-09-29. The C6 is built but not yet hardware-verified.
+**Status:** Accepted. Hardware-verified on 2026-09-29 on an ESP32-S3 (node 4) and an ESP32-C6 (node 5).
 **Date:** 2026-09-29
 **Numbering:** ADR-364 is the highest number on any branch at the time of
 writing. If another branch also takes 365, renumber whichever merges second.
@@ -183,5 +183,12 @@ When the build has no `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` (the 8 MB S3 and
      node's USB-Serial-JTAG port at the same moment. The node reset and was
      unharmed. Don't hold the USB console open while pushing OTA to a
      USB-attached node.
-- Not yet verified: C6 hardware; the 120 s no-IP timeout path; a real
-  power-cycle (a hard reset via RTS was used instead).
+- C6, MEASURED on 2026-09-29 on node 5 (ESP32-C6 `48:f6:ee:c5:30:c8`, 8 MB
+  flash, 4 MB layout, rollback bootloader).
+  - The branch build was first written over USB and the OTA key provisioned.
+  - A second build was pushed from the Pi 5 cog to `ota_1`: HTTP 200 in 11 s.
+  - `/ota/status` showed `pending_verify`, then `valid` about 28 s later.
+  - After a hard reset it stayed on the new build, `valid`.
+- Not yet verified: the 120 s no-IP timeout path; a real power-cycle (a hard
+  reset via RTS was used instead); the rollback test on the C6 (run on the S3
+  only).
