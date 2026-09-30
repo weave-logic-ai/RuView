@@ -79,6 +79,7 @@ CONFIG_VALUE_CHECKS = [
     ("zone", lambda value: value is not None),
     ("swarm_hb", lambda value: value is not None),
     ("swarm_ingest", lambda value: value is not None),
+    ("ota_psk_file", lambda value: value is not None),
 ]
 
 
@@ -108,6 +109,9 @@ MERGEABLE_ATTRS = [
     "channel", "filter_mac",
     "hop_channels", "hop_dwell",
     "seed_url", "seed_token", "zone", "swarm_hb", "swarm_ingest",
+    # The path is persisted, never the key, so a later re-provision keeps
+    # the OTA PSK instead of silently wiping it (OTA would then fail closed).
+    "ota_psk_file",
 ]
 
 
@@ -234,7 +238,24 @@ def build_nvs_csv(args):
         writer.writerow(["swarm_hb", "data", "u16", str(args.swarm_hb)])
     if args.swarm_ingest is not None:
         writer.writerow(["swarm_ingest", "data", "u16", str(args.swarm_ingest)])
+    # ADR-050 / RuView#596: OTA uploads fail closed until security/ota_psk is set.
+    if args.ota_psk_file is not None:
+        writer.writerow(["security", "namespace", "", ""])
+        writer.writerow(["ota_psk", "data", "string", read_ota_psk(args.ota_psk_file)])
     return buf.getvalue()
+
+
+def read_ota_psk(path):
+    """Read the OTA PSK from `path`: exactly 64 hex characters (a SHA-256).
+
+    The firmware caches it in a 65-byte buffer (OTA_PSK_MAX_LEN), so longer
+    values would be truncated and every upload would then be refused.
+    """
+    with open(path, encoding="utf-8") as f:
+        psk = f.read().strip()
+    if len(psk) != 64 or any(c not in "0123456789abcdefABCDEF" for c in psk):
+        raise ValueError(f"{path}: OTA PSK must be exactly 64 hex characters")
+    return psk.lower()
 
 
 def generate_nvs_binary(csv_content, size):
@@ -352,6 +373,10 @@ def main():
     parser.add_argument("--seed-url", type=str, help="Cognitum Seed base URL (e.g. http://10.1.10.236)")
     parser.add_argument("--seed-token", type=str, help="Seed Bearer token (from pairing)")
     parser.add_argument("--zone", type=str, help="Zone name for this node (e.g. lobby, hallway)")
+    parser.add_argument("--ota-psk-file", type=str,
+                        help="File holding the OTA pre-shared key (64 hex chars) to write to "
+                             "NVS security/ota_psk. OTA uploads are refused until it is set. "
+                             "Only the path is remembered in the state file, never the key.")
     parser.add_argument("--swarm-hb", type=int, help="Swarm heartbeat interval in seconds (default 30)")
     parser.add_argument("--swarm-ingest", type=int, help="Swarm vector ingest interval in seconds (default 5)")
     parser.add_argument("--dry-run", action="store_true", help="Generate NVS binary but don't flash")
@@ -478,6 +503,8 @@ def main():
         print(f"  Swarm HB:      {args.swarm_hb}s")
     if args.swarm_ingest is not None:
         print(f"  Swarm Ingest:  {args.swarm_ingest}s")
+    if args.ota_psk_file is not None:
+        print("  OTA PSK:       (set from file)")
 
     csv_content = build_nvs_csv(args)
 
