@@ -109,6 +109,16 @@ evidence.
 
 ### 2.1 An OTA'd image must confirm itself (ADR-365)
 
+**Before ADR-365, OTA never completed on this firmware.** MEASURED
+2026-09-29 on node 4 (S3, v0.8.12): `POST /ota` overflowed the 4 KB httpd
+stack (`stack overflow in task httpd`, `RTC_SW_CPU_RST`), and the node came
+back on its old slot. The client sees `connection reset`. Any board still on
+a pre-ADR-365 build has to be moved to it **over USB**.
+
+The server now runs with `CONFIG_OTA_HTTPD_STACK_SIZE` (8192). Each upload
+logs `httpd stack after POST /ota: N of 8192 bytes never used`. Record that
+number when you verify a node, because it is the evidence the size rests on.
+
 On a rollback-capable bootloader an OTA'd image boots **`PENDING_VERIFY`**.
 Until it is confirmed, the **next reset reverts to the previous slot** and
 `POST /ota` refuses a second update. `main/ota_health.c` does the confirming:

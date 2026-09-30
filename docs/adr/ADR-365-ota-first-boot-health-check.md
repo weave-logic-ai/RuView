@@ -25,6 +25,17 @@ anywhere in the tree. The consequences:
 - Nothing checked health, so a bad image was never rolled back on purpose. It
   only reverted if it happened to crash or be power-cycled.
 
+A second defect meant none of this was ever reached: **OTA never succeeded
+on this firmware before this change.** MEASURED on 2026-09-29, on node 4 (an
+ESP32-S3 running the v0.8.12 16 MB build, with the OTA key provisioned):
+
+- A `POST /ota` of a valid 1,228,672 B image logged `OTA update started`, then
+  `stack overflow in task httpd`, then `rst:0xc RTC_SW_CPU_RST`. The node came
+  back on its old slot. Both attempts failed the same way.
+- The cause: the server used `HTTPD_DEFAULT_CONFIG()`, which gives a 4096 B
+  task stack. The handler held a 1 KB receive buffer on that stack, while
+  calling `esp_ota_*` and formatting a float progress log.
+
 ## Decision
 
 At boot, `ota_health_start()` (in `main/ota_health.c`, called early in
@@ -74,6 +85,52 @@ prove rollback end to end.
 `pending_verify`, `new`, `undefined`, `other`, or `none`). An operator can
 confirm durability without a serial console.
 
+**The httpd stack.** The OTA/WASM HTTP server now sets `config.stack_size =
+CONFIG_OTA_HTTPD_STACK_SIZE`, which defaults to 8192. Three smaller changes go
+with it:
+
+- The OTA receive buffer is static rather than on the stack. Handlers run one
+  at a time on the single httpd task, so one buffer is enough.
+- The progress log prints an integer percent instead of a float.
+- `GET /wasm/list` keeps its 2 KB JSON buffer on the heap, not the stack.
+
+`recv_wait_timeout` stays at 30 s. Each `POST /ota` and `POST /wasm/upload` now
+logs `httpd stack after <handler>: N of M bytes never used`, so the size can
+be re-tuned from device measurements.
+
+Sizing: this is an estimate from static data, not a device measurement. It
+comes from a `-fstack-usage` build of the S3 16 MB configuration with IDF v5.5.
+
+- **Frame sizes along the OTA path** (bytes):
+
+  | function | bytes |
+  |---|---|
+  | `httpd_thread` | 144 |
+  | `httpd_sess_process` | 32 |
+  | `httpd_req_new` | 176 |
+  | `httpd_uri` | 64 |
+  | `ota_upload_handler` | 192 (1,216 with the old 1 KB buffer) |
+  | `esp_ota_end` | 48 |
+  | `image_validate` | 304 |
+  | `esp_image_verify` | 32 |
+  | `image_load` | 80 |
+  | `process_segments` | 112 |
+  | SHA-256 | about 110 |
+  | mmap/flash read | about 190 |
+
+- That chain comes to about 1.5 KB now, and about 2.5 KB with the old buffer.
+- Two things are not in the static data:
+  - libc's `vfprintf` behind every `ESP_LOG`. This build uses full newlib,
+    not nano, and the old progress line formatted a float.
+  - The flash-chip driver, which is reached through function pointers.
+
+  Together they plausibly add 1 to 1.5 KB. That explains an overflow at 4096
+  with the old handler.
+- The WASM upload path adds `wasm_upload_process` (336) and
+  `rvf_verify_signature` (352), plus a wasm3 module load that wasn't measured.
+- 8192 leaves roughly 4 to 5 KB above the estimated worst case, and costs
+  4 KB of internal RAM. The high-water-mark log is the check on that estimate.
+
 When the build has no `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` (the 8 MB S3 and
 4 MB C6 CI lanes), both entry points compile to no-ops.
 
@@ -102,4 +159,6 @@ When the build has no `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` (the 8 MB S3 and
 - ESP-IDF v5.5 S3 and C6 builds with rollback enabled link
   `esp_ota_mark_app_valid_cancel_rollback` (verified with `nm`). A build is not
   hardware evidence.
+- The httpd overflow is MEASURED on hardware (node 4, above). The fix is not
+  yet hardware-verified: no OTA has yet completed on this firmware.
 - Hardware verification is pending. The procedure is in RUNBOOK §2.1.
