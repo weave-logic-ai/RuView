@@ -325,3 +325,44 @@ Then run the step 4 `write_flash @flash_args` lines from those directories.
 Either way, NVS is untouched, so both boards rejoin the AP with their existing
 node ids. Put the boards back on wall power and confirm both reappear on the
 sensing server.
+
+## Results: 2026-09-29 bench run
+
+MEASURED on real silicon. The reproducer is the 88-second serial capture from the S3 receiver
+(`spike-s3-rx.log`, kept outside the repo in the session scratchpad). Setup:
+
+- Receiver: node 4, ESP32-S3 `02:00:00:00:00:01`, on USB.
+- Sender: node 5, ESP32-C6 `02:00:00:00:00:02`, on its own power.
+- Both boards were a few centimetres apart; RSSI was about −28 dBm, so this says nothing about range.
+
+The C6's own serial log could not be captured: its build uses the USB-Serial-JTAG console, and
+that port returned no data. So the sent count below (50 frames/s, 10 s per rate) is taken from the
+C6's configuration (CLAIMED). The on-air rates are confirmed from the receiver side:
+
+- 6M frames arrived with rate `0x0b` and legacy mode;
+- MCS0 frames arrived in HT mode with MCS 0.
+
+| Rate | Seconds with frames | Decoded | Mean per second | Yield vs 50/s |
+|---|---|---|---|---|
+| 1M DSSS | 0 | 0 | 0 | 0 |
+| 6M 11g OFDM | 31 | 1518 | 48.7 | ~0.97 |
+| HT20 MCS0 | 30 | 1190 | 39.9 | ~0.80 |
+
+- **DSSS:** 27 seconds had no illuminator frames, which matches the 1M windows, so no CSI came
+  from DSSS frames. That the C6 actually transmitted those frames is not independently confirmed.
+- **Q1: PASS** for 6M. MCS0 is exactly at the PASS threshold (0.80).
+- **Q2: PASS.**
+  - 2708 frames decoded, with `pl_null = 0` and one constant payload offset (15).
+  - The counter had no duplicates and no reordering.
+  - `illum_othermac = 0`, so the C6's STA MAC equals its base MAC.
+  - `len63` matched every decoded frame.
+- **Verdict: GO.**
+
+Design inputs:
+
+- **Gate.** Only 236 of 2708 illuminator frames (8.7%) won the 50 Hz gate slot; ambient traffic
+  took the rest. An illuminator therefore needs a receiver-side gate change: prefer frames whose
+  source is the illuminator MAC, or align the gate slot with the illuminator schedule.
+- **Channel width.** ESP-NOW frames produce 20 MHz CSI: `cwb = 0`, `csi_len` 128 in legacy mode
+  and 256 in HT mode. The AP's HT40 frames are 40 MHz, so the server must handle mixed widths.
+- **Rate.** Prefer 6M 11g. It lost about 3% of frames, against about 20% for MCS0.
