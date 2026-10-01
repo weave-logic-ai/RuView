@@ -21,6 +21,11 @@ This firmware captures WiFi Channel State Information (CSI) from an ESP32-S3 (pr
 
 ## Firmware 0.8.12: guided Mac onboarding
 
+> **Not released yet.** 0.8.12 is the version on `main`. The latest stable
+> firmware release is v0.8.8 ([Quick Start, step 0](#0-download-the-088-release)),
+> which does not include this onboarding protocol. To use it, build from
+> source ([Building](#building)).
+
 Firmware 0.8.12 adds the protocol used by the RuView macOS Add
 Sensor workflow. A directly attached S3 or C6 can identify itself through a
 nonce bound USB serial receipt, preserve its current WiFi settings, accept an
@@ -68,6 +73,9 @@ measured evidence and limitations.
 For users who want to get running fast. Detailed explanations follow in later sections.
 
 ### 0. Download the 0.8.8 release
+
+v0.8.8 is the latest stable firmware release. `main` is 0.8.12 and unreleased;
+to run it, build from source ([Building](#building)) instead of downloading.
 
 Use the versioned source tag and binaries on the
 [v0.8.8 ESP32 release page](https://github.com/ruvnet/RuView/releases/tag/v0.8.8-esp32).

@@ -1688,21 +1688,21 @@ A 3-6 node ESP32-S3 mesh provides full CSI at 20 Hz. Total cost: ~$54 for a 3-no
 
 **Flashing firmware:**
 
-Pre-built binaries are available at [Releases](https://github.com/ruvnet/RuView/releases):
+Pre-built binaries are available at [Releases](https://github.com/ruvnet/RuView/releases). For the current stable release and which bundle to flash, see the [firmware README](../firmware/esp32-csi-node/README.md#0-download-the-088-release). The table below is older release history:
 
 | Release | What It Includes | Tag |
 |---------|-----------------|-----|
-| [v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0-esp32) | **Latest — ADR-110 firmware-side substrate closed.** Adds ESP-NOW mesh substrate with quantified ≤100 µs alignment (104.1 µs smoothed stdev, 3.95× suppression, 99.56 % cross-board match measured live), 32-byte sync-packet UDP emission with operator-tunable cadence, ADR-018 byte 19 bit 4 wire-fix sourced from working ESP-NOW path, Python SyncPacketParser stub for host wiring ([WITNESS-LOG-110 §A0.7-§A0.13](WITNESS-LOG-110.md)) | `v0.7.0-esp32` |
+| [v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0-esp32) | **ADR-110 firmware-side substrate closed.** Adds ESP-NOW mesh substrate with quantified ≤100 µs alignment (104.1 µs smoothed stdev, 3.95× suppression, 99.56 % cross-board match measured live), 32-byte sync-packet UDP emission with operator-tunable cadence, ADR-018 byte 19 bit 4 wire-fix sourced from working ESP-NOW path, Python SyncPacketParser stub for host wiring ([WITNESS-LOG-110 §A0.7-§A0.13](WITNESS-LOG-110.md)) | `v0.7.0-esp32` |
 | [v0.6.9](https://github.com/ruvnet/RuView/releases/tag/v0.6.9-esp32) | Sync-packet UDP emission, `CONFIG_C6_SYNC_EVERY_N_FRAMES` tunable cadence | `v0.6.9-esp32` |
 | [v0.6.8](https://github.com/ruvnet/RuView/releases/tag/v0.6.8-esp32) | ESP-NOW EMA-smoothed cross-board offset (3.95× suppression, 104 µs stdev) | `v0.6.8-esp32` |
 | [v0.6.7](https://github.com/ruvnet/RuView/releases/tag/v0.6.7-esp32) | Real LP-core motion-gate RISC-V program (B4 code path complete) + Wi-Fi 6 soft-AP with TWT Responder for two-board iTWT benches (B1/B2 unblock) | `v0.6.7-esp32` |
-| [v0.5.0](https://github.com/ruvnet/RuView/releases/tag/v0.5.0-esp32) | **Stable (S3 mesh, recommended)** — mmWave sensor fusion (MR60BHA2/LD2410 auto-detect), 48-byte fused vitals, all v0.4.3.1 fixes | `v0.5.0-esp32` |
+| [v0.5.0](https://github.com/ruvnet/RuView/releases/tag/v0.5.0-esp32) | mmWave sensor fusion (MR60BHA2/LD2410 auto-detect), 48-byte fused vitals, all v0.4.3.1 fixes | `v0.5.0-esp32` |
 | [v0.4.3.1](https://github.com/ruvnet/RuView/releases/tag/v0.4.3.1-esp32) | Fall detection fix ([#263](https://github.com/ruvnet/RuView/issues/263)), 4MB flash ([#265](https://github.com/ruvnet/RuView/issues/265)), watchdog fix ([#266](https://github.com/ruvnet/RuView/issues/266)) | `v0.4.3.1-esp32` |
 | [v0.4.1](https://github.com/ruvnet/RuView/releases/tag/v0.4.1-esp32) | CSI build fix, compile guard, AMOLED display, edge intelligence ([ADR-057](../docs/adr/ADR-057-firmware-csi-build-guard.md)) | `v0.4.1-esp32` |
 | [v0.3.0-alpha](https://github.com/ruvnet/RuView/releases/tag/v0.3.0-alpha-esp32) | Alpha — adds on-device edge intelligence (ADR-039) | `v0.3.0-alpha-esp32` |
 | [v0.2.0](https://github.com/ruvnet/RuView/releases/tag/v0.2.0-esp32) | Raw CSI streaming, TDM, channel hopping, QUIC mesh | `v0.2.0-esp32` |
 
-> **Important:** Always use **v0.4.3.1 or later**. Earlier versions have false fall detection alerts (v0.4.2 and below) and CSI disabled in the build config (pre-v0.4.1).
+> **Important:** Use the current stable release. Versions before v0.4.3.1 have false fall detection alerts (v0.4.2 and below) and CSI disabled in the build config (pre-v0.4.1).
 
 ```bash
 # Flash an ESP32-S3 with 8MB flash (most boards)

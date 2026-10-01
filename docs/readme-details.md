@@ -869,11 +869,11 @@ ESP32-S3 node                    UDP/5005        Host server (optional)
 
 ### Flash and provision
 
-Download a pre-built binary — no build toolchain needed:
+Download a pre-built binary — no build toolchain needed. For the current stable firmware release and which bundle to flash, see the [firmware README](../firmware/esp32-csi-node/README.md#0-download-the-088-release); the table below is older release history:
 
 | Release | What's included | Tag |
 |---------|-----------------|-----|
-| [v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0) | **Latest** — Camera-supervised WiFlow model (accuracy figure retracted 2026-06-10, see above), ground-truth training pipeline, ruvector optimizations | `v0.7.0` |
+| [v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0) | Camera-supervised WiFlow model (accuracy figure retracted 2026-06-10, see above), ground-truth training pipeline, ruvector optimizations | `v0.7.0` |
 | [v0.6.0](https://github.com/ruvnet/RuView/releases/tag/v0.6.0-esp32) | [Pre-trained models on HuggingFace](https://huggingface.co/ruv/ruview), 17 sensing apps, 51.6% contrastive improvement, 0.008ms inference | `v0.6.0-esp32` |
 | [v0.5.5](https://github.com/ruvnet/RuView/releases/tag/v0.5.5-esp32) | SNN + MinCut (#348 fix) + CNN spectrogram + WiFlow + multi-freq mesh + graph transformer | `v0.5.5-esp32` |
 | [v0.5.4](https://github.com/ruvnet/RuView/releases/tag/v0.5.4-esp32) | Cognitum Seed integration ([ADR-069](docs/adr/ADR-069-cognitum-seed-csi-pipeline.md)), 8-dim feature vectors, RVF store, witness chain, security hardening | `v0.5.4-esp32` |
