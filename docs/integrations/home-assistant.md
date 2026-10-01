@@ -36,7 +36,15 @@ cargo run --release -p wifi-densepose-sensing-server \
 Within ~5 seconds of starting, Home Assistant should auto-create:
 
 - One **device** per RuView node (named after the MAC or the `friendly_name` from your zones config), plus one aggregate device
-- 20 **entities** announced per device (21 with `--mqtt-publish-pose`). 9 have a state publisher; 6 were observed publishing in a 190 s live test (MEASURED): presence, person count, motion level, motion energy, presence score and signal strength. Fall publishes only on an event; heart rate and breathing rate sent no state in that test. Zone occupancy, pose and the 10 semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending)
+- Announces 20 entities per device (21 with `--mqtt-publish-pose`). 9 have a state publisher; in a 190 s live run, 6 published state (presence, person count, motion level, motion energy, presence score, signal strength (per-node devices only)). The other 11 (the 10 semantic states and zone occupancy, plus pose when enabled) are announced; not yet publishing (ADR-115 P4.5 pending).
+
+#### How this was measured
+
+MEASURED 2026-10-01: a sensing server built with `--features mqtt`, a local Mosquitto broker, and five live ESP32 nodes running a non-stock 0.8.12 build, observed for 190 s. Heart rate, breathing rate and fall come from the nodes' `edge_vitals` packets, so their silence in that run may come from the nodes rather than the server. The presence state topic published about 73 messages a second per node, against about one a second for the other sensors; consider excluding it from Home Assistant's recorder. To check your own setup, run the server with `--mqtt --mqtt-host <broker>` and watch the broker for `/state` topics:
+
+```bash
+mosquitto_sub -v -h <broker> -t '#'
+```
 
 If nothing appears in HA's Settings → Devices, see [Troubleshooting](#troubleshooting).
 
@@ -136,7 +144,7 @@ ADR-115 §3.11.1 designs the mapping below for a future Matter Bridge, so Apple 
 
 The `--semantic*` and `--no-semantic` flags are declared in the sensing server's `cli.rs` but not yet in the parser the server actually uses (`main.rs`), so today the server rejects them; ADR-115 P4.5 wires them. The `--matter*` flags are not listed: Matter is not built.
 
-**Set `--mqtt-client-id` to a stable value.** The default, `wifi-densepose-<process id>`, changes on every restart, and Home Assistant device ids embed it, so each restart creates a new set of devices and the old retained ones linger (MEASURED).
+**Set `--mqtt-client-id` to a stable value.** The default, `wifi-densepose-<process id>`, changes on every restart, and Home Assistant device ids embed it, so each restart creates a new set of devices and the old retained ones linger (MEASURED: two runs produced different device ids).
 
 ### Zone tag file format
 
