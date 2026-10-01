@@ -399,6 +399,7 @@ docker pull ruvnet/wifi-densepose:latest
 # Run it: see getting-started/docker.md (a token and UDP settings are required)
 
 # Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
+# Local one-shot export: no ports are published, so the unauthenticated opt-in is safe here.
 docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
@@ -1204,6 +1205,7 @@ The [RuVector Format (RVF)](https://github.com/ruvnet/ruvector/tree/main/crates/
 ./target/release/sensing-server --model wifi-densepose-v1.rvf --progressive
 
 # Export via Docker (on its own, --export-rvf writes placeholder weights, not a trained model)
+# Local one-shot export: no ports are published, so the unauthenticated opt-in is safe here.
 docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
@@ -1707,6 +1709,7 @@ docker pull ruvnet/wifi-densepose:latest
 # Run it: see getting-started/docker.md (a token and UDP settings are required)
 
 # Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
+# Local one-shot export: no ports are published, so the unauthenticated opt-in is safe here.
 docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
