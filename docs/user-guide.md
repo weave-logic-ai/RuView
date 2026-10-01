@@ -174,14 +174,16 @@ See the full crate list and dependency order in [CLAUDE.md](../CLAUDE.md#crate-p
 
 ### Python wheel (pip) — ADR-117
 
-The Python API ships as **two interchangeable PyPI packages** — same
-compiled PyO3 wheel under both names; pick whichever import name
-reads better in your code:
+The Python API is the `wifi-densepose` PyO3 wheel. `ruview` is a thin
+package that installs it at the same version and re-exports it, so both
+import names work. Install `ruview`: the only published 2.x versions are
+pre-releases, and a plain `pip install wifi-densepose` resolves to the
+1.99.0 tombstone instead of the wheel.
 
-| PyPI | Install | Latest | Import |
+| PyPI | Install | Resolves to (2026-10-01) | Import |
 |---|---|---|---|
-| [`ruview`](https://pypi.org/project/ruview/) | `pip install ruview` | `2.0.0a1` | `from ruview import ...` |
-| [`wifi-densepose`](https://pypi.org/project/wifi-densepose/) | `pip install wifi-densepose` | `2.0.0a1` | `from wifi_densepose import ...` |
+| [`ruview`](https://pypi.org/project/ruview/) | `pip install ruview` | `ruview 2.0.0a1` + `wifi-densepose 2.0.0a1` | `from ruview import ...` |
+| [`wifi-densepose`](https://pypi.org/project/wifi-densepose/) | `pip install wifi-densepose` | `1.99.0` tombstone (needs `--pre` for `2.0.0a1`) | `from wifi_densepose import ...` |
 
 ```bash
 pip install ruview                        # core DSP (~250 KB compiled wheel)
