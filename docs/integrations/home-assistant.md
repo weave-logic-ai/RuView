@@ -171,7 +171,7 @@ When deploying in **healthcare**, **AAL (aging-in-place)**, or **commercial** se
 
 - **Strips** heart rate, breathing rate, and pose keypoints from every outbound MQTT publication.
 - **Suppresses discovery** for those entities entirely — HA never even sees they exist.
-- **Keeps every semantic primitive enabled.** Sleeping / distress / room-active / etc are *inferred* states. The inference happens server-side and only the boolean or score crosses the wire. This is the architectural win that makes the platform deployable in regulated contexts.
+- **Keeps the semantic primitives' discovery entries.** Once ADR-115 P4.5 lands, these inferred states are computed server-side and only their boolean or score is published (today they are announced; not yet publishing (ADR-115 P4.5 pending)). `--privacy-mode` affects MQTT only; restrict the REST and WebSocket APIs with `RUVIEW_API_TOKEN` and the bind address.
 
 Always pair `--privacy-mode` with `--mqtt-tls` on non-localhost brokers.
 
@@ -410,7 +410,7 @@ The 21 entities per node (9 publish state today; zones, pose and the semantic st
 |---|---|---|
 | **Fall detection + escalation** | `fall_detected` | Phase-acceleration spike + 3-frame debounce. Trigger a Lovelace alert, then escalate to a phone call if the person stays still for >2 min. Blueprint `07-fall-risk-escalation.yaml`. |
 | **Elderly inactivity anomaly** | `elderly_inactivity_anomaly` | Learns a person's normal day-pattern and flags deviations (e.g. usually up by 9 am, hasn't moved by 11 am). Blueprint `04-alert-elderly-inactivity-anomaly.yaml`. |
-| **Privacy-mode care monitoring** | `possible_distress` + `no_movement` + `someone_sleeping` | Run with `--privacy-mode` — heart rate and breathing values are stripped at the wire, but the *inferred states* keep working. Care staff sees "Distress detected" without ever seeing the underlying biometric numbers. The architectural win that makes RuView legally deployable in care homes. |
+| **Privacy-mode care monitoring** | `possible_distress` + `no_movement` + `someone_sleeping` | Run with `--privacy-mode` — heart rate and breathing values are stripped from MQTT; the inferred states are announced; not yet publishing (ADR-115 P4.5 pending). |
 | **Sleep apnea screening** | `breathing_rate_bpm` + `breathing_confidence` | Track per-night BPM histograms; flag dips that correlate with apnea events. |
 | **Post-surgery recovery monitoring** | `no_movement` + `bed_exit` + `breathing_rate_bpm` | Hospital-discharge patient at home; rule: "no bed exits in 12 h" triggers a check-in call. |
 | **Dementia wandering detection** | `multi_room_transition` + nighttime gate | Multi-room transitions between 23:00 and 06:00 alert a caregiver — without GPS tags or wearables the person may refuse to wear. |
