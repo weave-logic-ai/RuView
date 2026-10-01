@@ -17,6 +17,12 @@ This folder records significant architectural choices in the RuView / WiFi-Dense
 
 **Numbering gap: ADR-358, ADR-359 and ADR-360 do not exist as files.** [ADR-361](ADR-361-single-transmitter-pairing.md) names them as earlier pairing experiments ("ADR-358 (falsified), ADR-359 (mechanism confirmed, not adopted), ADR-360 (falsified)"), but they were never committed to this repository. The numbers stay reserved; do not reuse them.
 
+**Duplicate numbers: three numbers name two files each.** Cite these by file name, not number alone:
+[ADR-263 (RTL8720F radar platform)](ADR-263-rtl8720f-2-4ghz-fmcw-radar-platform.md) and [ADR-263 (npm harness review)](ADR-263-ruview-npm-harness-deep-review.md);
+[ADR-264 (RTL8720F wire protocol)](ADR-264-rtl8720f-radar-wire-protocol.md) and [ADR-264 (rvagent MCP and CLI review)](ADR-264-rvagent-mcp-and-cli-npm-deep-review.md);
+[ADR-323 (physics-constrained pose refinement)](ADR-323-native-rust-physics-constrained-pose-refinement.md) and [ADR-323 (RTL8721Dx wire protocol)](ADR-323-rtl8721dx-ameba-csi-wire-protocol.md).
+[ADR-167](ADR-167-ddd-bounded-contexts.md) (an appendix to ADR-052) and [ADR-168](ADR-168-benchmark-proof.md) (a benchmark record) carry no Status line.
+
 ## Why ADRs?
 
 Building a system that turns WiFi signals into human pose estimation involves hundreds of non-obvious decisions: which signal processing algorithms to use, how to bridge ESP32 firmware to a Rust pipeline, whether to run inference on-device or on a server, how to handle multi-person separation with limited subcarriers.
