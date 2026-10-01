@@ -451,8 +451,8 @@ authority. Versioned collections are `sites`, `buildings`, `floors`,
 The dependency-free contributor harness exposes the same read path:
 
 ```bash
-npx @ruvnet/ruview@0.5.0 spaces --resource alerts --limit 25
-npx @ruvnet/ruview@0.5.0 mcp start
+npx @ruvnet/ruview@0.5.1 spaces --resource alerts --limit 25
+npx @ruvnet/ruview@0.5.1 mcp start
 ```
 
 Its MCP tool is `ruview_spaces_list`. MCP reads are OAuth-only, use the fixed

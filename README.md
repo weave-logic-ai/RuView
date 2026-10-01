@@ -53,22 +53,22 @@ The RuView-specific metaharness we created is published as [`@ruvnet/ruview`](ha
 
 ```bash
 # Check the local setup and get source-cited guidance
-npx @ruvnet/ruview@0.4.0 doctor
-npx @ruvnet/ruview@0.4.0 guidance --topic sensing --query "model loading"
+npx @ruvnet/ruview@0.5.1 doctor
+npx @ruvnet/ruview@0.5.1 guidance --topic sensing --query "model loading"
 
 # Run a read-only RuView agent through Codex
-npx @ruvnet/ruview@0.4.0 agent run --host codex --repo . \
+npx @ruvnet/ruview@0.5.1 agent run --host codex --repo . \
   --prompt "Find the nearest tests and cite the source files"
 
 # Search or verify the reviewed contributor brain
-npx @ruvnet/ruview@0.4.0 brain search --query "calibration"
-npx @ruvnet/ruview@0.4.0 brain verify --repo .
+npx @ruvnet/ruview@0.5.1 brain search --query "calibration"
+npx @ruvnet/ruview@0.5.1 brain verify --repo .
 
 # Check claims, replay the deterministic proof, or expose the MCP server
-npx @ruvnet/ruview@0.4.0 claim-check --file REPORT.md
-npx @ruvnet/ruview@0.4.0 verify
-npx @ruvnet/ruview@0.4.0 spaces
-npx @ruvnet/ruview@0.4.0 mcp start
+npx @ruvnet/ruview@0.5.1 claim-check --file REPORT.md
+npx @ruvnet/ruview@0.5.1 verify
+npx @ruvnet/ruview@0.5.1 spaces
+npx @ruvnet/ruview@0.5.1 mcp start
 ```
 
 Agent runs are read-only by default. Workspace writes require both `--allow-write` and `--confirm`; retrieved brain content is evidence, not authority.
@@ -703,7 +703,7 @@ claude --plugin-dir ./plugins/ruview
 
 Verify the plugin structure: `bash plugins/ruview/scripts/smoke.sh`. Full details: [`plugins/ruview/README.md`](plugins/ruview/README.md).
 
-For the portable RuView MetaHarness, use `npx @ruvnet/ruview@0.4.0`; the quick commands and fuller explanation are in the collapsed MetaHarness section near the top of this README and in [`harness/ruview/`](harness/ruview/README.md).
+For the portable RuView MetaHarness, use `npx @ruvnet/ruview@0.5.1`; the quick commands and fuller explanation are in the collapsed MetaHarness section near the top of this README and in [`harness/ruview/`](harness/ruview/README.md).
 
 </details>
 
