@@ -35,7 +35,7 @@ cargo run --release -p wifi-densepose-sensing-server \
 
 Within ~5 seconds of starting, Home Assistant should auto-create:
 
-- One **device** per RuView node (named after the MAC or the `friendly_name` from your zones config)
+- One **device** per RuView node (named after the MAC or the `friendly_name` from your zones config), plus one aggregate device
 - 21 **entities** announced per device. 9 publish state today (presence, person count, heart rate, breathing rate, motion level, motion energy, fall, presence score, signal strength); zone occupancy, pose and the 10 semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending)
 
 If nothing appears in HA's Settings → Devices, see [Troubleshooting](#troubleshooting).
@@ -115,7 +115,7 @@ ADR-115 §3.11.1 designs the mapping below for a future Matter Bridge, so Apple 
 | `--mqtt-port <PORT>` | 1883 (8883 with TLS) | Broker port |
 | `--mqtt-username <U>` | — | Username for broker auth |
 | `--mqtt-password-env <VAR>` | `MQTT_PASSWORD` | Env var holding the password |
-| `--mqtt-client-id <ID>` | `wifi-densepose-<hostname>` | MQTT client ID |
+| `--mqtt-client-id <ID>` | `wifi-densepose-<process id>` | MQTT client ID. Set a stable value: Home Assistant device ids embed it, so with the default every restart creates new devices and the old retained ones linger |
 | `--mqtt-prefix <PREFIX>` | `homeassistant` | Discovery topic prefix |
 | `--mqtt-tls` | off | Encrypt connection |
 | `--mqtt-ca-file <PATH>` | — | Pinned CA for TLS / mTLS |
