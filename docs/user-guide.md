@@ -356,7 +356,7 @@ Real Channel State Information at 20 Hz with 56-192 subcarriers. Required for po
 
 The server's UDP listener binds to loopback (`127.0.0.1`) by default, so nodes on your LAN cannot reach it. Add `--udp-bind 0.0.0.0` together with `--udp-allow <node-subnet-cidr>` (the subnet your nodes are on). A routable bind with no allowlist and no `--udp-insecure-lan` makes the server exit. See the sensing server's [`SECURITY.md`](../v2/crates/wifi-densepose-sensing-server/SECURITY.md).
 
-Pass `--source esp32` explicitly. With the default `--source auto`, the server probes UDP for 2 s, then host Wi-Fi. On Windows (`netsh`), or on macOS when the `mac_wifi` helper is installed (CoreWLAN), a successful Wi-Fi probe selects the `wifi` source, and the server then does not bind UDP at all, so nodes that start sending later are never heard. The boot log shows the outcome on the `Data source:` line (`udp_receiver=false` in that case). With no ESP32 and no host Wi-Fi, `auto` serves data tagged `simulated` and switches to live on the first real frame.
+Pass `--source esp32` explicitly. With the default `--source auto`, the server probes UDP for 2 s, then host Wi-Fi. On Windows (`netsh`; code-derived, untested), or on macOS when the `mac_wifi` helper is installed (CoreWLAN), a successful Wi-Fi probe selects the `wifi` source, and the server then does not bind UDP at all, so nodes that start sending later are never heard. The boot log shows the outcome on the `Data source:` line (`udp_receiver=false` in that case). With no ESP32 and no host Wi-Fi, `auto` serves data tagged `simulated` and switches to live on the first real frame.
 
 ```bash
 # From source
