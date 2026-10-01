@@ -405,7 +405,7 @@ docker run -p 8765:8765 -p 8080:8080 ruvnet/wifi-densepose:python
 # Both via docker-compose
 cd docker && docker compose up
 
-# Export RVF model
+# Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
 docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
@@ -1204,13 +1204,13 @@ The [RuVector Format (RVF)](https://github.com/ruvnet/ruvector/tree/main/crates/
 | **CLI** | `--export-rvf` (generate), `--load-rvf` (config), `--save-rvf` (persist), `--model` (inference), `--progressive` (3-layer load) |
 
 ```bash
-# Export model package
+# Export model package (on its own, --export-rvf writes placeholder weights, not a trained model)
 ./target/release/sensing-server --export-rvf wifi-densepose-v1.rvf
 
 # Load and run with progressive loading
 ./target/release/sensing-server --model wifi-densepose-v1.rvf --progressive
 
-# Export via Docker
+# Export via Docker (on its own, --export-rvf writes placeholder weights, not a trained model)
 docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
@@ -1500,7 +1500,7 @@ graph TB
 # Run vital sign benchmark
 ./target/release/sensing-server --benchmark
 
-# Export RVF model package
+# Export RVF model package (on its own, --export-rvf writes placeholder weights, not a trained model)
 ./target/release/sensing-server --export-rvf model.rvf
 
 # Train a model
@@ -1720,7 +1720,7 @@ docker run -p 8765:8765 -p 8080:8080 ruvnet/wifi-densepose:python
 # Both via docker-compose
 cd docker && docker compose up
 
-# Export RVF model
+# Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
 docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 

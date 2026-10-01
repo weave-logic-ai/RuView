@@ -1547,6 +1547,7 @@ The RuVector Format (RVF) packages a trained model into a single self-contained 
 ### Export
 
 ```bash
+# On its own, --export-rvf writes placeholder weights, not a trained model.
 ./target/release/sensing-server --export-rvf model.rvf
 ```
 
