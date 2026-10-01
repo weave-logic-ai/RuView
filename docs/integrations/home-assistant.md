@@ -129,7 +129,7 @@ ADR-115 §3.11.1 designs the mapping below for a future Matter Bridge, so Apple 
 | `--mqtt-publish-pose` | off | Enable pose-keypoint publication |
 | `--mqtt-rate-pose <HZ>` | 1.0 | Pose publish rate when enabled |
 | `--privacy-mode` | off | Strip HR/BR/pose from MQTT |
-| `--semantic` | on | Enable inference layer (not wired yet; ADR-115 P4.5 pending) |
+| `--semantic` | on, once wired | Enable inference layer (not wired yet; ADR-115 P4.5 pending) |
 | `--semantic-thresholds-file <PATH>` | — | Per-primitive threshold overrides (not wired yet; ADR-115 P4.5 pending) |
 | `--semantic-zones-file <PATH>` | — | Zone-tag map (`bathroom`, `bedroom`, …) (not wired yet; ADR-115 P4.5 pending) |
 | `--no-semantic <PRIMITIVE>` | — | Disable a specific primitive, repeatable (not wired yet; ADR-115 P4.5 pending) |
@@ -492,13 +492,7 @@ A few patterns appear over and over; if you understand these you can build most 
 
 ### What about regulated environments?
 
-Run RuView with `--privacy-mode` and heart rate, breathing rate, and pose values are stripped at the MQTT wire. (The 10 inferred semantic states are announced; not yet publishing (ADR-115 P4.5 pending).) Per ADR-115 §6, this passes:
-
-- **HIPAA-style minimum-necessary** (no biometric numbers leave the device)
-- **GDPR purpose-limitation** (the inferred states are the smallest dataset that supports the automation)
-- **CCPA "sensitive personal information"** (no health data crosses the wire)
-
-The fall-risk-elevated / possible-distress / someone-sleeping flags still work — they're computed *inside* the sensor pipeline and only the boolean outputs are published. That's the architectural win that makes RuView deployable in care homes, hospitals, schools, and shared-housing scenarios where raw biometrics would be a non-starter.
+Run RuView with `--privacy-mode` and heart rate, breathing rate and pose values are stripped from MQTT. The REST and WebSocket APIs are not affected; restrict them with `RUVIEW_API_TOKEN` and the bind address. (The 10 inferred semantic states are announced; not yet publishing (ADR-115 P4.5 pending).) ADR-115 §6 designs this mode around HIPAA-style minimum-necessary, GDPR purpose-limitation and CCPA sensitive-data principles. That is a design intent, not a compliance assessment. Once ADR-115 P4.5 lands, the fall-risk-elevated, possible-distress and someone-sleeping states are computed inside the server and only their boolean outputs are published.
 
 ## References
 
