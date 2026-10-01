@@ -396,14 +396,7 @@ pip install wifi-densepose[all]   # All optional deps
 ```bash
 # Rust sensing server (132 MB — recommended)
 docker pull ruvnet/wifi-densepose:latest
-docker run -p 3000:3000 -p 3001:3001 -p 5005:5005/udp ruvnet/wifi-densepose:latest
-
-# Python sensing pipeline (569 MB)
-docker pull ruvnet/wifi-densepose:python
-docker run -p 8765:8765 -p 8080:8080 ruvnet/wifi-densepose:python
-
-# Both via docker-compose
-cd docker && docker compose up
+# Run it: see getting-started/docker.md (a token and UDP settings are required)
 
 # Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
 docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
@@ -412,7 +405,7 @@ docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/mo
 | Image | Tag | Platforms | Ports |
 |-------|-----|-----------|-------|
 | `ruvnet/wifi-densepose` | `latest`, `rust` | linux/amd64, linux/arm64 | 3000 (REST), 3001 (WS), 5005/udp (ESP32) |
-| `ruvnet/wifi-densepose` | `python` | linux/amd64 | 8765 (WS), 8080 (UI) |
+| `ruvnet/wifi-densepose` | `python` | linux/amd64 | Legacy: runs the retired v1 path. Do not use. |
 
 </details>
 
@@ -485,7 +478,7 @@ All crates integrate with [RuVector v2.0.4](https://github.com/ruvnet/ruvector) 
 ```bash
 # Fastest path — Docker
 docker pull ruvnet/wifi-densepose:latest
-docker run -p 3000:3000 ruvnet/wifi-densepose:latest
+# Run it: see getting-started/docker.md (the container needs a token or an explicit opt-in)
 
 # Or from source (Rust)
 ./install.sh --profile rust --yes
@@ -1711,14 +1704,7 @@ python -m pytest archive/v1/tests/ -v
 ```bash
 # Rust sensing server (132 MB)
 docker pull ruvnet/wifi-densepose:latest
-docker run -p 3000:3000 -p 3001:3001 -p 5005:5005/udp ruvnet/wifi-densepose:latest
-
-# Python pipeline (569 MB)
-docker pull ruvnet/wifi-densepose:python
-docker run -p 8765:8765 -p 8080:8080 ruvnet/wifi-densepose:python
-
-# Both via docker-compose
-cd docker && docker compose up
+# Run it: see getting-started/docker.md (a token and UDP settings are required)
 
 # Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
 docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf

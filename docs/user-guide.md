@@ -85,15 +85,25 @@ No hardware? The system runs in **simulated mode** with synthetic CSI data.
 
 ## Installation
 
+**First time with an ESP32-S3 board?** Follow
+[Quickstart: ESP32-S3 to a live dashboard](getting-started/quickstart-esp32-s3.md).
+It covers flashing, provisioning, starting the server and opening the UI. The
+sections below cover the other install variants.
+
 ### Docker (Recommended)
 
-The fastest path. No toolchain installation needed.
+No toolchain installation needed. The full, tested Docker instructions are in
+[getting-started/docker.md](getting-started/docker.md).
 
 ```bash
 docker pull ruvnet/wifi-densepose:latest
 ```
 
 Multi-architecture image (amd64 + arm64). Works on Intel/AMD and Apple Silicon Macs. Contains the Rust sensing server, Three.js UI, and all signal processing.
+The container exits with code 64 unless you set `RUVIEW_API_TOKEN` (or opt out
+with `RUVIEW_ALLOW_UNAUTHENTICATED=1` for loopback or lab use), and it needs
+extra `RUVIEW_UDP_*` settings to receive ESP32 frames. See
+[docker.md](getting-started/docker.md).
 
 **Data source selection:** Use the `CSI_SOURCE` environment variable to select the sensing mode:
 
@@ -104,7 +114,7 @@ Multi-architecture image (amd64 + arm64). Works on Intel/AMD and Apple Silicon M
 | `simulated` | Generate synthetic CSI frames (no hardware required) |
 | `wifi` | Host Wi-Fi RSSI (not available inside containers) |
 
-Example: `docker run -e CSI_SOURCE=esp32 -p 3000:3000 -p 5005:5005/udp ruvnet/wifi-densepose:latest`
+For a working ESP32 `docker run` command, see [docker.md](getting-started/docker.md).
 
 ### From Source (Rust)
 
@@ -257,13 +267,10 @@ Non-interactive:
 
 ### 30-Second Demo (Docker)
 
-```bash
-# Pull and run
-docker run -p 3000:3000 -p 3001:3001 ruvnet/wifi-densepose:latest
-
-# Open the UI in your browser
-# http://localhost:3000
-```
+Run the container with the simulated-data command in
+[getting-started/docker.md](getting-started/docker.md) and open
+`http://localhost:3000/ui/`. The container exits with code 64 without a token
+or an explicit opt-in, and the demo data is simulated, not real sensing.
 
 You will see a Three.js visualization with:
 - 3D body skeleton (17 COCO keypoints)
@@ -306,9 +313,8 @@ The `--source` flag controls where CSI data comes from.
 Default in Docker. Generates synthetic CSI data exercising the full pipeline.
 
 ```bash
-# Docker
-docker run -p 3000:3000 ruvnet/wifi-densepose:latest
-# (--source auto is the default; falls back to simulate when no hardware detected)
+# Docker (see getting-started/docker.md for the required token or opt-in)
+# --source auto is the default; serves simulated data when no hardware is detected
 
 # From source
 ./target/release/sensing-server --source simulate --http-port 3000 --ws-port 3001
@@ -363,8 +369,7 @@ Pass `--source esp32` explicitly. With the default `--source auto`, the server p
 ./target/release/sensing-server --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001 \
   --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 
-# Docker (use CSI_SOURCE environment variable)
-docker run -p 3000:3000 -p 3001:3001 -p 5005:5005/udp -e CSI_SOURCE=esp32 ruvnet/wifi-densepose:latest
+# Docker: needs a token, RUVIEW_UDP_BIND and an allowlist; see getting-started/docker.md
 ```
 
 The ESP32 nodes stream binary CSI frames over UDP to port 5005. See [Hardware Setup](#esp32-s3-mesh) for flashing instructions.
@@ -831,12 +836,10 @@ Full design + operator guide: [`docs/integrations/home-assistant.md`](integratio
 
 1. Inside Home Assistant, install the **Mosquitto broker** add-on from the Add-on Store and start it.
 2. In HA, **Settings → Devices & Services → Add Integration → MQTT**, point at the broker.
-3. Start the sensing-server with MQTT:
-
-   ```bash
-   docker run --rm --net=host ruvnet/wifi-densepose:0.7.0 \
-       --source esp32 --mqtt --mqtt-host <ha-host-ip>
-   ```
+3. Start the sensing-server with `--mqtt --mqtt-host <ha-host-ip>` added to the
+   `--source esp32` command from the
+   [quickstart](getting-started/quickstart-esp32-s3.md). In Docker, add the
+   token and UDP settings from [docker.md](getting-started/docker.md) as well.
 4. Within ~5 seconds HA auto-creates one **device** per RuView node announcing 21 entities: 11 raw signals (presence, person count, HR, BR, motion, fall, RSSI, zones, pose, …) plus 10 semantic primitives (someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting, bathroom, fall-risk, bed-exit, no-movement, multi-room-transition). 9 currently publish state; zones, pose and the 10 semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending).
 
 ### Privacy mode for healthcare / AAL
@@ -1891,8 +1894,7 @@ Binary size: 990 KB (8MB flash, 52% free) or 773 KB (4MB flash). v0.5.0 adds mmW
 ./target/release/sensing-server --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001 \
   --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 
-# Docker (use CSI_SOURCE environment variable)
-docker run -p 3000:3000 -p 3001:3001 -p 5005:5005/udp -e CSI_SOURCE=esp32 ruvnet/wifi-densepose:latest
+# Docker: needs a token, RUVIEW_UDP_BIND and an allowlist; see getting-started/docker.md
 ```
 
 See [ADR-018](../docs/adr/ADR-018-esp32-dev-implementation.md), [ADR-029](../docs/adr/ADR-029-ruvsense-multistatic-sensing-mode.md), and [Tutorial #34](https://github.com/ruvnet/RuView/issues/34).
@@ -2224,6 +2226,10 @@ cd docker
 docker compose up
 ```
 
+As shipped, the `sensing-server` service exits with code 64 (no token, no
+unauthenticated opt-in) and does not bind UDP for LAN nodes. See
+[docker.md](getting-started/docker.md) before using it.
+
 This starts:
 - Rust sensing server on ports 3000 (HTTP), 3001 (WS), 5005 (UDP)
 - Python legacy server on ports 8080 (HTTP), 8765 (WS)
@@ -2530,21 +2536,15 @@ docker pull --platform linux/arm64 ruvnet/wifi-densepose:latest
 
 ### Docker: "Connection refused" on localhost:3000
 
-Make sure you're mapping the ports correctly:
-
-```bash
-docker run -p 3000:3000 -p 3001:3001 ruvnet/wifi-densepose:latest
-```
-
-The `-p 3000:3000` maps host port 3000 to container port 3000.
+First check whether the container is running at all. Without
+`RUVIEW_API_TOKEN` or `RUVIEW_ALLOW_UNAUTHENTICATED=1` it exits with code 64.
+Then make sure `-p 3000:3000` maps the port. Full command:
+[docker.md](getting-started/docker.md).
 
 ### Docker: No WebSocket data in UI
 
-Add the WebSocket port mapping:
-
-```bash
-docker run -p 3000:3000 -p 3001:3001 ruvnet/wifi-densepose:latest
-```
+Publish the WebSocket port too (`-p 3001:3001`) and open the UI through
+`http://localhost:3000/ui/`. See [docker.md](getting-started/docker.md).
 
 ### ESP32: "CSI not enabled in menuconfig"
 
@@ -2661,7 +2661,7 @@ Install PyYAML: `pip install pyyaml`
 ## FAQ
 
 **Q: Do I need special hardware to try this?**
-No. Run `docker run -p 3000:3000 ruvnet/wifi-densepose:latest` and open `http://localhost:3000`. Simulated mode exercises the full pipeline with synthetic data.
+No. Run the simulated demo in [docker.md](getting-started/docker.md) and open `http://localhost:3000/ui/`. Simulated mode exercises the full pipeline with synthetic data.
 
 **Q: Can consumer WiFi laptops do pose estimation?**
 No. Consumer WiFi exposes only RSSI (one number per access point), not CSI (56+ complex subcarrier values per frame). RSSI supports coarse presence and motion detection. Full pose estimation requires CSI-capable hardware like an ESP32-S3 ($8) or a research NIC.
