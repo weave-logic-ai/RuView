@@ -36,7 +36,7 @@ cargo run --release -p wifi-densepose-sensing-server \
 Within ~5 seconds of starting, Home Assistant should auto-create:
 
 - One **device** per RuView node (named after the MAC or the `friendly_name` from your zones config)
-- 17+ **entities** per device (presence, person count, heart rate, breathing rate, motion, fall events, signal strength, zones, and the 10 semantic primitives)
+- 21 **entities** announced per device. 9 publish state today (presence, person count, heart rate, breathing rate, motion level, motion energy, fall, presence score, signal strength); zone occupancy, pose and the 10 semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending)
 
 If nothing appears in HA's Settings → Devices, see [Troubleshooting](#troubleshooting).
 
@@ -50,7 +50,7 @@ Ctrl-C — the publisher pushes `offline` to every availability topic before dis
 
 RuView publishes three classes of entity. Names below are the `unique_id` slugs — Home Assistant assigns friendly names automatically.
 
-### Raw signals (11 entities)
+### Raw signals (11 entities; 9 publish state)
 
 | HA entity | Slug | HA component | Unit | Source field |
 |---|---|---|---|---|
@@ -63,14 +63,14 @@ RuView publishes three classes of entity. Names below are the `unique_id` slugs 
 | Fall detected | `fall` | `event` | — | `edge_vitals.fall_detected` |
 | Presence score | `presence_score` | `sensor` | % | `edge_vitals.presence_score` × 100 |
 | Signal strength | `rssi` | `sensor` | dBm | `edge_vitals.rssi` |
-| Zone occupancy | `zone_occupancy` | `binary_sensor` | — | `sensing_update.zones` |
-| Pose keypoints | `pose` | `sensor` (attrs) | — | `pose_data.keypoints` (opt-in via `--mqtt-publish-pose`) |
+| Zone occupancy | `zone_occupancy` | `binary_sensor` | — | `sensing_update.zones` (announced; not yet publishing (ADR-115 P4.5 pending)) |
+| Pose keypoints | `pose` | `sensor` (attrs) | — | `pose_data.keypoints` (opt-in via `--mqtt-publish-pose`; announced; not yet publishing (ADR-115 P4.5 pending)) |
 
 Heart rate, breathing rate, and pose are **biometric** entities — they are stripped from MQTT when `--privacy-mode` is set. See [Privacy](#privacy) below.
 
-### Semantic automation primitives (10 entities)
+### Semantic automation primitives (10 entities; announced; not yet publishing (ADR-115 P4.5 pending))
 
-These are the inferred high-level states that customer automations actually use. Each one is a small finite-state machine running server-side with explicit warmup, hysteresis, and refractory windows. Per-primitive precision/recall is published in [`semantic-primitives-metrics.md`](./semantic-primitives-metrics.md).
+These are the inferred high-level states that customer automations actually use. Each one is a small finite-state machine with explicit warmup, hysteresis, and refractory windows. The state machines exist in the server (`src/semantic/`) but are not yet connected to the MQTT publisher, so Home Assistant shows these entities without a state until ADR-115 P4.5 lands. Per-primitive precision/recall (CLAIMED) is in [`semantic-primitives-metrics.md`](./semantic-primitives-metrics.md).
 
 | HA entity | Slug | HA component | What it fires on |
 |---|---|---|---|
@@ -129,14 +129,18 @@ ADR-115 §3.11.1 designs the mapping below for a future Matter Bridge, so Apple 
 | `--mqtt-publish-pose` | off | Enable pose-keypoint publication |
 | `--mqtt-rate-pose <HZ>` | 1.0 | Pose publish rate when enabled |
 | `--privacy-mode` | off | Strip HR/BR/pose from MQTT |
+| `--semantic` | on | Enable inference layer (not wired yet; ADR-115 P4.5 pending) |
+| `--semantic-thresholds-file <PATH>` | — | Per-primitive threshold overrides (not wired yet; ADR-115 P4.5 pending) |
+| `--semantic-zones-file <PATH>` | — | Zone-tag map (`bathroom`, `bedroom`, …) (not wired yet; ADR-115 P4.5 pending) |
+| `--no-semantic <PRIMITIVE>` | — | Disable a specific primitive, repeatable (not wired yet; ADR-115 P4.5 pending) |
 
-`--matter*`, `--semantic*` and `--no-semantic` are not listed. They are declared in the sensing server's `cli.rs`, but the parser the server actually uses (`main.rs`) does not accept them.
+The `--semantic*` and `--no-semantic` flags are declared in the sensing server's `cli.rs` but not yet in the parser the server actually uses (`main.rs`), so today the server rejects them; ADR-115 P4.5 wires them. The `--matter*` flags are not listed: Matter is not built.
 
 ### Zone tag file format
 
 ```yaml
-# semantic-zones.yaml — format for --semantic-zones-file, which the current
-# server parser does not accept (see the note under the CLI matrix)
+# semantic-zones.yaml — format for --semantic-zones-file
+# (not wired yet; ADR-115 P4.5 pending, see the note under the CLI matrix)
 zones:
   bathroom: ["zone_3", "zone_7"]
   bedroom:  ["zone_1"]
@@ -148,7 +152,8 @@ bed_zones: ["zone_1"]
 ### Threshold overrides
 
 ```yaml
-# semantic-thresholds.yaml — passed to --semantic-thresholds-file
+# semantic-thresholds.yaml — format for --semantic-thresholds-file
+# (not wired yet; ADR-115 P4.5 pending)
 sleep_dwell_secs: 300
 distress_hr_multiple: 1.5
 room_active_motion_threshold: 0.10
@@ -383,7 +388,7 @@ There is no Matter Bridge to pair yet; see [Matter device-type mapping](#matter-
 
 ## Applications — what people actually do with this
 
-The 21 entities per node — 11 raw signals (presence, person count, breathing, heart rate, motion, RSSI, etc.) and 10 inferred semantic states (someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting-in-progress, bathroom-occupied, fall-risk-elevated, bed-exit, no-movement, multi-room-transition) — slot into Home Assistant like any other sensor. The list below groups real-world uses so you can pick the ones that match your space.
+The 21 entities per node (9 publish state today; zones, pose and the semantic states are announced; not yet publishing (ADR-115 P4.5 pending)) — 11 raw signals (presence, person count, breathing, heart rate, motion, RSSI, etc.) and 10 inferred semantic states (someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting-in-progress, bathroom-occupied, fall-risk-elevated, bed-exit, no-movement, multi-room-transition) — slot into Home Assistant like any other sensor. The list below groups real-world uses so you can pick the ones that match your space.
 
 ### Personal & home
 
@@ -483,11 +488,11 @@ A few patterns appear over and over; if you understand these you can build most 
 2. **"Two states agree" guards** — `presence == false` AND security panel disarmed AND no door sensor open → strong "house is empty" signal.
 3. **"Threshold + cooldown"** — `presence_score > 0.7` for 30 s before triggering (smooths over flicker), then a 5 min cooldown before re-arming (prevents oscillation).
 4. **"Calendar vs reality"** — pair an HA calendar event with `n_persons` → meeting-room auto-release, classroom unused-period detection.
-5. **"Privacy-mode + semantic-only"** — run `--privacy-mode`, expose only the semantic primitives to HA, keep biometrics on-device. The right default for any deployment with non-tenant occupants.
+5. **"Privacy-mode + semantic-only"** — run `--privacy-mode`, expose only the semantic primitives to HA, keep biometrics on-device (semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending)). The right default for any deployment with non-tenant occupants.
 
 ### What about regulated environments?
 
-Run RuView with `--privacy-mode` and only the 10 inferred semantic states reach Home Assistant — heart rate, breathing rate, and pose values are stripped at the MQTT wire. Per ADR-115 §6, this passes:
+Run RuView with `--privacy-mode` and heart rate, breathing rate, and pose values are stripped at the MQTT wire. (The 10 inferred semantic states are announced; not yet publishing (ADR-115 P4.5 pending).) Per ADR-115 §6, this passes:
 
 - **HIPAA-style minimum-necessary** (no biometric numbers leave the device)
 - **GDPR purpose-limitation** (the inferred states are the smallest dataset that supports the automation)

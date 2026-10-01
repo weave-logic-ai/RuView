@@ -837,7 +837,7 @@ Full design + operator guide: [`docs/integrations/home-assistant.md`](integratio
    docker run --rm --net=host ruvnet/wifi-densepose:0.7.0 \
        --source esp32 --mqtt --mqtt-host <ha-host-ip>
    ```
-4. Within ~5 seconds HA auto-creates one **device** per RuView node with 21 entities: 11 raw signals (presence, person count, HR, BR, motion, fall, RSSI, zones, pose, …) plus 10 semantic primitives (someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting, bathroom, fall-risk, bed-exit, no-movement, multi-room-transition).
+4. Within ~5 seconds HA auto-creates one **device** per RuView node announcing 21 entities: 11 raw signals (presence, person count, HR, BR, motion, fall, RSSI, zones, pose, …) plus 10 semantic primitives (someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting, bathroom, fall-risk, bed-exit, no-movement, multi-room-transition). 9 currently publish state; zones, pose and the 10 semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending).
 
 ### Privacy mode for healthcare / AAL
 
@@ -845,7 +845,7 @@ Full design + operator guide: [`docs/integrations/home-assistant.md`](integratio
 sensing-server --mqtt --mqtt-host <broker> --mqtt-tls --privacy-mode
 ```
 
-`--privacy-mode` strips heart rate, breathing rate and pose keypoints from MQTT. (The semantic-primitive entities are announced to Home Assistant but do not publish state yet.)
+`--privacy-mode` strips heart rate, breathing rate and pose keypoints from MQTT. (The semantic-primitive entities are announced; not yet publishing (ADR-115 P4.5 pending).)
 
 ### Matter Bridge (planned, not built)
 
