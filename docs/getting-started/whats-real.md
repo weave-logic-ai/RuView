@@ -19,7 +19,7 @@ the cell.
 
 | Capability | Status | What is there | Reproducer / source |
 |---|---|---|---|
-| Presence | CLAIMED | Heuristic motion and phase-variance detection with about 30 s of ambient calibration, plus a trained head on Hugging Face. No accuracy number has been measured. The old "100% presence" figure was retracted: it came from a single-class recording. | Pipeline checks: [`PROOF.md`](../../PROOF.md) (`bash scripts/prove.sh`). No presence-accuracy reproducer |
+| Presence | CLAIMED | Heuristic motion and phase-variance detection with about 30 s of ambient calibration, plus a trained head on Hugging Face. No accuracy number has been measured. The old "100% presence" figure was retracted: it came from a single-class recording. | Pipeline checks: [`PROOF.md`](../../PROOF.md) (`bash scripts/prove.sh`; stop any local `sensing-server` on UDP 5005 first, because the workspace tests send synthetic frames to `127.0.0.1:5005`). No presence-accuracy reproducer |
 | Person count | CLAIMED (heuristic, unmeasured) | One scalar-score heuristic. It is floored at 1 and cannot report an empty room. The eigenvalue occupancy path is compiled out of the shipped server. Nothing measures its accuracy, and overcounting is reported. | #2058, #1940; unit tests only: `cd v2 && cargo test -p wifi-densepose-sensing-server --bin sensing-server --no-default-features person_count_tests` (a test is not a measured room) |
 | Breathing | SYNTHETIC | A 0.1 to 0.5 Hz band-pass extractor. Tests use generated signals. No real-CSI accuracy has been measured. | `cd v2 && cargo test -p wifi-densepose-vitals`; [vitals README](../../v2/crates/wifi-densepose-vitals/README.md) |
 | Heart rate | SYNTHETIC | Fixture-based software checks (breathing without a pulse, mixed signals, noise, band edges). These are not clinical BPM accuracy and not real-CSI accuracy. Open issue #2057 covers the extractor. | `cd v2 && cargo test -p wifi-densepose-vitals` |
@@ -62,7 +62,8 @@ trained result.
   a trained model.
 - **Deleting through the API does not work.** `DELETE /api/v1/recording/{id}`
   and `DELETE /api/v1/models/{id}` return 404 for a real id and the file stays.
-  Delete the file under `data/recordings/` (or the models directory) by hand.
+  Delete the file by hand. Recordings are written under `data/recordings/` relative
+  to the directory the server was started from, not under `--data-dir`.
 - **Simulated mode is SYNTHETIC.** Data served while the source reads
   `simulated` (see [troubleshooting](troubleshooting.md#15-dashboard-shows-data-but-no-node-is-connected-simulated))
   is generated, not sensed. Do not record or train on it expecting real results.
