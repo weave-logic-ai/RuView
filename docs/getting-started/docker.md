@@ -88,7 +88,7 @@ docker run --rm --name ruview \
   Using your LAN range here on macOS drops every frame.
 - Instead of the allowlist you can use `-e RUVIEW_UDP_INSECURE_LAN=true`.
   This accepts frames from any address, so use it only on a network you
-  trust. Write `true`, not `1`: the value `1` crashes the server.
+  trust. Write `true`, not `1`: the value `1` makes the server exit with an argument error.
 - Even with an allowlist, the UDP stream is unauthenticated. The allowlist
   only filters by sender address.
 - With `CSI_SOURCE=auto` (the image default) the server shows data tagged
