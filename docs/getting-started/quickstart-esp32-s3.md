@@ -4,6 +4,9 @@ This page takes you from one ESP32-S3 board to a dashboard showing live Wi-Fi
 CSI frames. It uses the native `sensing-server` on macOS or Linux. If you
 prefer containers, use [docker.md](docker.md) instead.
 
+Not everything here was tested on a device; see
+[Tested and not tested](#tested-and-not-tested) at the end.
+
 Read [whats-real.md](whats-real.md) before you trust any number the dashboard
 shows. A working dashboard means frames are arriving. It does not mean
 camera-grade sensing.
@@ -47,7 +50,9 @@ On Linux:
 sha256sum -c SHA256SUMS.txt --ignore-missing
 ```
 
-Unzip it. Never flash an S3 bundle onto a different chip.
+Unzip it. Never flash an S3 bundle onto a different chip. Bundles exist only
+for 8 MB and 4 MB boards; for other flash sizes see
+[Choose a firmware image](provisioning-and-ota.md#choose-a-firmware-image).
 
 <details>
 <summary>Alternative: build 0.8.12 from source (main)</summary>
@@ -219,6 +224,22 @@ A live dashboard proves that CSI frames travel from the board to the server.
 It does not validate any capability. Presence, pose, vital signs and counts
 each have a status tagged `MEASURED`, `CLAIMED` or `SYNTHETIC` in
 [whats-real.md](whats-real.md).
+
+## Tested and not tested
+
+Validated for this guide (as of 2026-10-01):
+the checksum step, the from-source firmware build, the server build and
+start on macOS, the bind and allowlist behaviour, token auth, the dashboard
+and the QuickSettings token entry, and the `/api/v1/nodes` check against
+live ESP32 nodes (the nodes ran a non-stock 0.8.12 build).
+
+Not tested:
+
+- The flash and provision steps were not run on a device for this guide; they
+  need supervised hardware. The flash command was only checked to parse.
+- The native server was tested on macOS. Linux native is untested.
+- There is no bundle for flash sizes other than 8 MB and 4 MB, and the 8 MB
+  bundle is unverified on 16 MB boards.
 
 ## Next steps
 
