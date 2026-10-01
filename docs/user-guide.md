@@ -843,15 +843,11 @@ Full design + operator guide: [`docs/integrations/home-assistant.md`](integratio
 sensing-server --mqtt --mqtt-host <broker> --mqtt-tls --privacy-mode
 ```
 
-`--privacy-mode` strips heart rate, breathing rate, and pose keypoints from MQTT **and** Matter — they never reach the wire. Semantic primitives stay published because they're inferred *states* server-side, not biometric *values*. This is the architectural win that makes ADR-115 healthcare- and enterprise-deployable.
+`--privacy-mode` strips heart rate, breathing rate and pose keypoints from MQTT. (The semantic-primitive entities are announced to Home Assistant but do not publish state yet.)
 
-### Matter Bridge (Apple Home / Google Home / Alexa / SmartThings)
+### Matter Bridge (planned, not built)
 
-```bash
-sensing-server --matter --matter-setup-file /var/run/ruview-matter.txt
-```
-
-Open `/var/run/ruview-matter.txt` for the Matter pairing QR / 11-digit setup code. Scan it from Apple Home / Google Home / your HA Matter integration. RuView appears as a Bridged Device with one occupancy endpoint per node + per zone, plus a momentary switch for fall events.
+A Matter Bridge for Apple Home / Google Home / Alexa / SmartThings is designed in [ADR-115](adr/ADR-115-home-assistant-integration.md) §3.11. It is not built: the sensing server's `matter` cargo feature is empty, its live command-line parser does not accept the `--matter*` flags, and `cog-ha-matter` defers commissioning ("not yet implemented"). Today, Google Home and Alexa reach RuView through Home Assistant, and Apple Home has a separate opt-in HAP bridge (see [What's wired](../README.md#whats-wired)).
 
 Detailed entity reference, blueprint catalog, troubleshooting recipe matrix: see [`docs/integrations/home-assistant.md`](integrations/home-assistant.md).
 

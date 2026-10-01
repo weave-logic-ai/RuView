@@ -1,8 +1,8 @@
 # Home Assistant integration
 
-RuView publishes its full WiFi-sensing capability set to **Home Assistant** via MQTT auto-discovery (HA-DISCO) and to **any Matter controller** (Apple Home / Google Home / Alexa / SmartThings / HA) via a built-in Matter Bridge (HA-FABRIC). This document is the operator guide for both paths. Design rationale: [ADR-115](../adr/ADR-115-home-assistant-integration.md).
+RuView publishes its WiFi-sensing capability set to **Home Assistant** via MQTT auto-discovery (HA-DISCO); the sensing server must be built with `--features mqtt`. A Matter Bridge (HA-FABRIC) for Apple Home / Google Home / Alexa / SmartThings is designed but not built yet (see [Matter device-type mapping](#matter-device-type-mapping-planned-not-built)). This document is the operator guide for the MQTT path. Design rationale: [ADR-115](../adr/ADR-115-home-assistant-integration.md).
 
-> **Tested against** Home Assistant Core **2025.5**, Mosquitto add-on **6.4**, and Matter (chip-tool) **1.3**. Bump the matrix when you change tested versions.
+> **Tested against** Home Assistant Core **2025.5** and Mosquitto add-on **6.4**. Bump the matrix when you change tested versions.
 
 ---
 
@@ -66,7 +66,7 @@ RuView publishes three classes of entity. Names below are the `unique_id` slugs 
 | Zone occupancy | `zone_occupancy` | `binary_sensor` | — | `sensing_update.zones` |
 | Pose keypoints | `pose` | `sensor` (attrs) | — | `pose_data.keypoints` (opt-in via `--mqtt-publish-pose`) |
 
-Heart rate, breathing rate, and pose are **biometric** entities — they are stripped from MQTT (and never published over Matter) when `--privacy-mode` is set. See [Privacy](#privacy) below.
+Heart rate, breathing rate, and pose are **biometric** entities — they are stripped from MQTT when `--privacy-mode` is set. See [Privacy](#privacy) below.
 
 ### Semantic automation primitives (10 entities)
 
@@ -87,9 +87,9 @@ These are the inferred high-level states that customer automations actually use.
 
 Every state change carries a `reason` attribute (e.g. `["motion<5%", "br=12bpm", "presence=true"]`) so you can template against it in HA automations to understand why an automation triggered.
 
-### Matter device-type mapping
+### Matter device-type mapping (planned, not built)
 
-Per ADR-115 §3.11.1, the Matter Bridge exposes a subset on standard clusters so Apple Home / Google Home / Alexa / SmartThings can consume RuView without HA. Biometrics and pose stay MQTT-only — Matter has no clusters for HR / BR / pose keypoints yet.
+ADR-115 §3.11.1 designs the mapping below for a future Matter Bridge, so Apple Home / Google Home / Alexa / SmartThings could consume RuView without HA. It is not built: the sensing server's `matter` cargo feature is empty, its live command-line parser does not accept the `--matter*` flags, and `cog-ha-matter` defers commissioning ("not yet implemented"). Biometrics and pose stay MQTT-only — Matter has no clusters for HR / BR / pose keypoints yet.
 
 | RuView | Matter cluster | Matter endpoint device type |
 |---|---|---|
@@ -128,21 +128,15 @@ Per ADR-115 §3.11.1, the Matter Bridge exposes a subset on standard clusters so
 | `--mqtt-rate-rssi <HZ>` | 0.1 | RSSI publish rate (Hz) |
 | `--mqtt-publish-pose` | off | Enable pose-keypoint publication |
 | `--mqtt-rate-pose <HZ>` | 1.0 | Pose publish rate when enabled |
-| `--privacy-mode` | off | Strip HR/BR/pose from MQTT and Matter |
-| `--matter` | off | Enable the HA-FABRIC Matter Bridge |
-| `--matter-setup-file <PATH>` | — | Where to write the QR + manual code |
-| `--matter-reset` | off | Wipe fabric credentials and re-commission |
-| `--matter-vendor-id <VID>` | `0xFFF1` (dev) | CSA-assigned vendor ID |
-| `--matter-product-id <PID>` | `0x8001` | Product ID |
-| `--semantic` | on | Enable inference layer |
-| `--semantic-thresholds-file <PATH>` | — | Per-primitive threshold overrides |
-| `--semantic-zones-file <PATH>` | — | Zone-tag map (`bathroom`, `bedroom`, …) |
-| `--no-semantic <PRIMITIVE>` | — | Disable a specific primitive (repeatable) |
+| `--privacy-mode` | off | Strip HR/BR/pose from MQTT |
+
+`--matter*`, `--semantic*` and `--no-semantic` are not listed. They are declared in the sensing server's `cli.rs`, but the parser the server actually uses (`main.rs`) does not accept them.
 
 ### Zone tag file format
 
 ```yaml
-# semantic-zones.yaml — passed to --semantic-zones-file
+# semantic-zones.yaml — format for --semantic-zones-file, which the current
+# server parser does not accept (see the note under the CLI matrix)
 zones:
   bathroom: ["zone_3", "zone_7"]
   bedroom:  ["zone_1"]
@@ -383,9 +377,7 @@ Per [ADR-115 §3.9](../adr/ADR-115-home-assistant-integration.md#39-tls--auth), 
 
 ### Matter pairing fails
 
-1. Check the setup code in your `--matter-setup-file` log (defaults to printing on startup).
-2. Make sure the host running `sensing-server` is on the same WiFi subnet as the controller.
-3. If Apple Home complains about an unknown vendor, that's expected — RuView uses dev VID `0xFFF1` until P10 (see [ADR §9.9](../adr/ADR-115-home-assistant-integration.md#9b-matter-path-p7p10)). Tap "Add anyway".
+There is no Matter Bridge to pair yet; see [Matter device-type mapping](#matter-device-type-mapping-planned-not-built).
 
 ---
 
