@@ -160,7 +160,7 @@ node scripts/snn-csi-processor.js --port 5006  # SNN real-time learning
 node scripts/mincut-person-counter.js --port 5006  # Correct person counting
 
 # Option 4: Python — live on PyPI (ADR-117)
-pip install ruview                        # today this is the 2.0.0a1 pre-release
+pip install ruview                        # as of 2026-10-01, the 2.0.0a1 pre-release
 # `ruview` installs the wifi-densepose PyO3 wheel at the same version and re-exports it.
 # Plain `pip install wifi-densepose` resolves to the 1.99.0 tombstone, not the wheel.
 # Add [client] for the asyncio WebSocket + paho-mqtt clients:
