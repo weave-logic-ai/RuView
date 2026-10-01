@@ -2,7 +2,7 @@
 
 How to put Wi-Fi settings and a node identity onto an ESP32 CSI node, run several nodes together, pick the right firmware image, and update firmware over the air.
 
-Everything here describes `main` at `b90b592d` (firmware 0.8.12). Evidence tags: **SRC** means read from source and not run; **HW** means confirmed by an `hw-validator` log. Statements tagged SRC are not hardware evidence.
+Everything here describes `main` at `b90b592d` (firmware 0.8.12). Evidence tags: **SRC** means read from source and not run; **HW** means confirmed by a hardware test log. Statements tagged SRC are not hardware evidence.
 
 > **Validation status.** Not yet run on stock hardware: a real provision-and-connect on an S3 and a C6, a real USB flash of each bundle, `POST /ota` with a key, and the check that re-provisioning erases a stored OTA key. The page states what they should do from source only. `GET /ota/status` was observed on live 0.8.12 nodes, but those were a local 16 MB build, not a stock image.
 
@@ -13,7 +13,7 @@ Everything here describes `main` at `b90b592d` (firmware 0.8.12). Evidence tags:
 > | Gap | What happens | Tracking |
 > |---|---|---|
 > | `provision.py` cannot set the OTA key | The firmware tells you to run `provision.py --ota-psk <hex>`, but that flag does not exist. With no key in NVS, every `POST /ota` returns 403. | Issue [#1753](https://github.com/ruvnet/RuView/issues/1753). Not yet available; open PRs add it, for example [#1760](https://github.com/ruvnet/RuView/pull/1760). |
-> | The OTA upload can overflow the httpd stack | The upload can crash the node in `esp_ota_end`. | Issue [#1893](https://github.com/ruvnet/RuView/issues/1893). Fix in PR [#1594](https://github.com/ruvnet/RuView/pull/1594). |
+> | The OTA upload can overflow the httpd stack | The upload can crash the node in `esp_ota_end`. | Issue [#1893](https://github.com/ruvnet/RuView/issues/1893). Proposed fix: PR [#1594](https://github.com/ruvnet/RuView/pull/1594) (open). |
 > | Nothing marks a new image valid | If rollback is enabled in the bootloader, the node reverts to the old image on the next reset. No released image enables rollback today (see [Images](#choose-a-firmware-image)), so this bites only custom builds. | No issue yet. A fix is pending. |
 >
 > When these land, update this box and the [OTA section](#ota-updates).
@@ -65,7 +65,7 @@ Firmware defaults when NVS is empty: node id 1, target `192.168.1.100:5005`, SSI
 
 Two things the script cannot write today: the OTA key (`security/ota_psk`; `--ota-psk` is not yet available, PR [#1760](https://github.com/ruvnet/RuView/pull/1760)) and the WASM signing key (`wasm_pubkey`).
 
-**Re-provisioning replaces the whole NVS partition (SRC).** Because the script writes a complete image at `0x9000`, anything in other namespaces, including a previously set OTA key, should be lost. Provision everything in one pass. `hw-validator` should confirm this.
+**Re-provisioning replaces the whole NVS partition (SRC).** Because the script writes a complete image at `0x9000`, anything in other namespaces, including a previously set OTA key, should be lost. Provision everything in one pass. Not yet confirmed on hardware.
 
 ### Serial onboarding
 
@@ -86,7 +86,7 @@ python provision.py --port <port-c> --ssid <ssid> --password <password> \
 
 - **Node ids** must be unique. If two nodes share the default id 1, the server sees one node (SRC).
 - **TDM slots** (ADR-029) are 0-based and must be below `--tdm-total`. `provision.py` rejects a slot at or above the total, and requires both flags together. The firmware clamps an out-of-range slot to 0 at boot.
-- **In firmware 0.8.12 the TDM slot has no effect on air timing.** The values are stored and range-checked, and nothing else in `main/` reads them. Setting them is harmless and prepares for later firmware, but do not expect staggered transmit times (source check by `hw-validator`).
+- **In firmware 0.8.12 the TDM slot has no effect on air timing.** The values are stored and range-checked, and nothing else in `main/` reads them. Setting them is harmless and prepares for later firmware, but do not expect staggered transmit times (confirmed by reading the source, not by an on-air test).
 
 ### Tell the server where the nodes are
 
@@ -134,15 +134,15 @@ This page describes `main` (0.8.12) behaviour. Where it differs from v0.8.8, you
 Offsets are the same for all three images (SRC: `partitions_*.csv`, firmware README):
 
 ```bash
-python -m esptool --chip <esp32s3|esp32c6> -b 460800 \
-  --before default_reset --after hard_reset write_flash \
+python3 -m esptool --chip <esp32s3|esp32c6> --port <port> --baud 460800 \
+  write-flash --flash-mode dio --flash-size <8MB|4MB> \
   0x0     bootloader.bin \
   0x8000  partition-table.bin \
   0xf000  ota_data_initial.bin \
   0x20000 esp32-csi-node.bin
 ```
 
-The list leaves out `0x9000`, so provisioned settings survive. The v0.8.8 zips use these exact inner names for all three variants, each with its own `FLASHING.md`. The CI `.tar.gz` bundles name the 4 MB and C6 files with suffixes (`esp32-csi-node-4mb.bin`, `partition-table-4mb.bin`, `esp32-csi-node-c6.bin`, `partition-table-c6.bin`), so use the names in your bundle. Newer `esptool` versions warn that `write_flash` is deprecated in favour of `write-flash`; both work.
+The list leaves out `0x9000`, so provisioned settings survive. The v0.8.8 zips use these exact inner names for all three variants, each with its own `FLASHING.md`. The CI `.tar.gz` bundles name the 4 MB and C6 files with suffixes (`esp32-csi-node-4mb.bin`, `partition-table-4mb.bin`, `esp32-csi-node-c6.bin`, `partition-table-c6.bin`), so use the names in your bundle.  Use `--flash-size 8MB` for the `8mb` image and `4MB` for `4mb` and `c6-4mb`.
 
 ## OTA updates
 
