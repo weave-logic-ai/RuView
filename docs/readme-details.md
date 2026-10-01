@@ -399,7 +399,7 @@ docker pull ruvnet/wifi-densepose:latest
 # Run it: see getting-started/docker.md (a token and UDP settings are required)
 
 # Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
-docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
+docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
 | Image | Tag | Platforms | Ports |
@@ -1204,7 +1204,7 @@ The [RuVector Format (RVF)](https://github.com/ruvnet/ruvector/tree/main/crates/
 ./target/release/sensing-server --model wifi-densepose-v1.rvf --progressive
 
 # Export via Docker (on its own, --export-rvf writes placeholder weights, not a trained model)
-docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
+docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
 Built on the [rvf](https://github.com/ruvnet/ruvector/tree/main/crates/rvf) crate family (rvf-types, rvf-wire, rvf-manifest, rvf-index, rvf-quant, rvf-crypto, rvf-runtime). See [ADR-023](docs/adr/ADR-023-trained-densepose-model-ruvector-pipeline.md).
@@ -1707,7 +1707,7 @@ docker pull ruvnet/wifi-densepose:latest
 # Run it: see getting-started/docker.md (a token and UDP settings are required)
 
 # Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
-docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
+docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
 ### Environment Variables
