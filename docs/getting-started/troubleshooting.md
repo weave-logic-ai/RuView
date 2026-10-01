@@ -196,7 +196,7 @@ Calibration never gets enough data. Reported in #1499 (S3 DevKitC-1, 0 pps) and
 are old: their `version.txt` reads 0.6.7 (built 2026-06-02), while the source is
 at 0.8.12. In #1499, the old image falsely detects a display on a board that has
 none, and CSI stays at 0 pps. A source build with the DevKitC overlay gave 29 to
-38 pps for the same reporter.
+38 pps for the same reporter (reported in #1499; not reproduced here).
 
 **Check.**
 
@@ -206,12 +206,10 @@ cat firmware/esp32-csi-node/release_bins/version.txt
 python -m serial.tools.miniterm <port> 115200
 ```
 
-**Fix.** Do not flash from `release_bins/`. Flash a published release bundle
-(`esp32-csi-node-firmware-<variant>.tar.gz` from a `v*-esp32` release) or build
-from source with the overlay for your board. Which release carries a bundle for
-the current source version is covered in [quickstart-esp32-s3.md](quickstart-esp32-s3.md).
-The latest stable firmware release is older than the source on `main`, so check
-the release page rather than assuming the versions match.
+**Fix.** Do not flash from `release_bins/`. Flash the v0.8.8 stable release zip
+for your board (see [quickstart-esp32-s3.md](quickstart-esp32-s3.md)), or build
+0.8.12 from source with the overlay for your board. The latest stable release is
+older than the source on `main`, so do not assume the versions match.
 
 ## 5. sendto ENOMEM on the node
 
@@ -253,8 +251,7 @@ reset.
 3. **No mark-valid.** No code calls `esp_ota_mark_app_valid_cancel_rollback`.
    With rollback enabled in a build, the new image reverts after the next reset.
    The released images do not enable rollback, so this applies to builds that
-   do (the 16 MB config). A fix is in progress on a branch
-   (`fix/ota-mark-app-valid`).
+   do (the 16 MB config). No fix is merged yet.
 
 **Check.**
 
@@ -292,7 +289,8 @@ No measurement of the count's accuracy exists. See [whats-real.md](whats-real.md
 **Check.**
 
 ```bash
-curl -s http://localhost:8080/api/v1/sensing/latest   # inspect estimated_persons and per-node data
+curl -s -H "Authorization: Bearer $RUVIEW_API_TOKEN" \
+  http://localhost:8080/api/v1/sensing/latest   # inspect estimated_persons and per-node data
 ```
 
 **Fix.** There is no fix on your side. Use presence and motion for "is anyone
@@ -327,8 +325,8 @@ logged (#1894).
 
 **Likely cause.** Unknown. The report used Docker Desktop on macOS. A related
 change (#1814) rate-limits broadcasts to the tick interval and may be relevant.
-A native multi-node setup has run without a freeze at about 30 fps per node, but
-that was not a timed soak.
+A 30-second check on a native server with five nodes on a non-stock build saw
+the tick keep advancing. That is not a soak and says nothing about #1894.
 
 **Check.** Poll the tick and compare:
 
@@ -461,7 +459,8 @@ python scripts/udp-relay.py --listen-port 5005 --forward-port 5006
 Then map the container's UDP port to the relay's forward port (`5006:5005/udp`)
 and bring the stack up. Nodes still target `<host-ip>:5005`, so no
 re-provisioning is needed. You still need the UDP bind settings from
-[section 2](#2-server-receives-0-frames). Linux and macOS hosts are not affected.
+[section 2](#2-server-receives-0-frames). On macOS (OrbStack) all node ids arrived in our test, because node identity is
+in the payload; Linux is untested.
 Use `--verbose` on the relay to confirm each node's address appears.
 
 ## 14. Node associates but never appears
@@ -475,9 +474,12 @@ the UDP sender silently not working. Also see [section 2](#2-server-receives-0-f
 **Check.** Watch the serial console for CSI and UDP send messages
 (`python -m serial.tools.miniterm <port> 115200`).
 
-**Fix.** Power-cycle the node: unplug USB, wait two seconds, replug. Firmware
-0.8.0 and later includes a watchdog that resets after 30 s of zero CSI frames.
-An older image lacks it, so update the firmware over USB.
+**Fix.** Power-cycle the node: unplug USB, wait two seconds, replug. The firmware
+on `main` has an uplink watchdog (`CONFIG_UPLINK_WATCHDOG`, on by default). It
+restarts the node after 1200 s with no successful UDP send. It arms only after
+the first successful send and does not watch CSI capture, so a node that never
+sent successfully is not covered. If the node stays silent, update the
+firmware over USB.
 
 ## 15. Dashboard shows data but no node is connected ("simulated")
 
@@ -501,7 +503,8 @@ Simulated output is SYNTHETIC by definition. See [whats-real.md](whats-real.md).
 **Check.**
 
 ```bash
-curl -s http://localhost:8080/api/v1/status    # look at "source" and "source_state"
+curl -s -H "Authorization: Bearer $RUVIEW_API_TOKEN" \
+  http://localhost:8080/api/v1/status    # look at "source" and "source_state"
 curl -s http://localhost:8080/health           # also carries "source"
 ```
 
