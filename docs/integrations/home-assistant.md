@@ -36,7 +36,7 @@ cargo run --release -p wifi-densepose-sensing-server \
 Within ~5 seconds of starting, Home Assistant should auto-create:
 
 - One **device** per RuView node (named after the MAC or the `friendly_name` from your zones config), plus one aggregate device
-- 21 **entities** announced per device. 9 publish state today (presence, person count, heart rate, breathing rate, motion level, motion energy, fall, presence score, signal strength); zone occupancy, pose and the 10 semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending)
+- 20 **entities** announced per device (21 with `--mqtt-publish-pose`). 9 have a state publisher; 6 were observed publishing in a 190 s live test (MEASURED): presence, person count, motion level, motion energy, presence score and signal strength. Fall publishes only on an event; heart rate and breathing rate sent no state in that test. Zone occupancy, pose and the 10 semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending)
 
 If nothing appears in HA's Settings → Devices, see [Troubleshooting](#troubleshooting).
 
@@ -50,17 +50,17 @@ Ctrl-C — the publisher pushes `offline` to every availability topic before dis
 
 RuView publishes three classes of entity. Names below are the `unique_id` slugs — Home Assistant assigns friendly names automatically.
 
-### Raw signals (11 entities; 9 publish state)
+### Raw signals (11 entities; 10 announced by default, pose only with `--mqtt-publish-pose`)
 
 | HA entity | Slug | HA component | Unit | Source field |
 |---|---|---|---|---|
 | Presence | `presence` | `binary_sensor` | — | `edge_vitals.presence` |
 | Person count | `person_count` | `sensor` | persons | `edge_vitals.n_persons` |
-| Heart rate | `heart_rate` | `sensor` | bpm | `edge_vitals.heartrate_bpm` |
-| Breathing rate | `breathing_rate` | `sensor` | bpm | `edge_vitals.breathing_rate_bpm` |
+| Heart rate | `heart_rate` | `sensor` | bpm | `edge_vitals.heartrate_bpm` (wired; no state in a 190 s measured run) |
+| Breathing rate | `breathing_rate` | `sensor` | bpm | `edge_vitals.breathing_rate_bpm` (wired; no state in a 190 s measured run) |
 | Motion level | `motion_level` | `sensor` | % | `edge_vitals.motion` × 100 |
 | Motion energy | `motion_energy` | `sensor` | (dimensionless) | `edge_vitals.motion_energy` |
-| Fall detected | `fall` | `event` | — | `edge_vitals.fall_detected` |
+| Fall detected | `fall` | `event` | — | `edge_vitals.fall_detected` (event; none in a 190 s measured run) |
 | Presence score | `presence_score` | `sensor` | % | `edge_vitals.presence_score` × 100 |
 | Signal strength | `rssi` | `sensor` | dBm | `edge_vitals.rssi` |
 | Zone occupancy | `zone_occupancy` | `binary_sensor` | — | `sensing_update.zones` (announced; not yet publishing (ADR-115 P4.5 pending)) |
@@ -135,6 +135,8 @@ ADR-115 §3.11.1 designs the mapping below for a future Matter Bridge, so Apple 
 | `--no-semantic <PRIMITIVE>` | — | Disable a specific primitive, repeatable (not wired yet; ADR-115 P4.5 pending) |
 
 The `--semantic*` and `--no-semantic` flags are declared in the sensing server's `cli.rs` but not yet in the parser the server actually uses (`main.rs`), so today the server rejects them; ADR-115 P4.5 wires them. The `--matter*` flags are not listed: Matter is not built.
+
+**Set `--mqtt-client-id` to a stable value.** The default, `wifi-densepose-<process id>`, changes on every restart, and Home Assistant device ids embed it, so each restart creates a new set of devices and the old retained ones linger (MEASURED).
 
 ### Zone tag file format
 
@@ -388,7 +390,7 @@ There is no Matter Bridge to pair yet; see [Matter device-type mapping](#matter-
 
 ## Applications — what people actually do with this
 
-The 21 entities per node (9 publish state today; zones, pose and the semantic states are announced; not yet publishing (ADR-115 P4.5 pending)) — 11 raw signals (presence, person count, breathing, heart rate, motion, RSSI, etc.) and 10 inferred semantic states (someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting-in-progress, bathroom-occupied, fall-risk-elevated, bed-exit, no-movement, multi-room-transition) — slot into Home Assistant like any other sensor. The list below groups real-world uses so you can pick the ones that match your space.
+The 20 entities per node (21 with `--mqtt-publish-pose`; 9 have a state publisher and 6 were observed publishing in a 190 s live test; zones, pose and the semantic states are announced; not yet publishing (ADR-115 P4.5 pending)) — 11 raw signals (presence, person count, breathing, heart rate, motion, RSSI, etc.) and 10 inferred semantic states (someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting-in-progress, bathroom-occupied, fall-risk-elevated, bed-exit, no-movement, multi-room-transition) — slot into Home Assistant like any other sensor. The list below groups real-world uses so you can pick the ones that match your space.
 
 ### Personal & home
 
