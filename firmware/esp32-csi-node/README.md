@@ -182,7 +182,7 @@ cargo run -p wifi-densepose-sensing-server -- --source esp32 \
   --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 ```
 
-The UDP listener binds to loopback by default, so a node on your LAN needs `--udp-bind` and `--udp-allow` (or `--udp-insecure-lan`). Use `--source esp32` rather than `auto`: on a Mac with the optional `mac_wifi` helper installed, `auto` can pick host Wi-Fi and never listen for the node.
+The UDP listener binds to loopback by default, so a node on your LAN needs `--udp-bind` and `--udp-allow` (or `--udp-insecure-lan`). Use `--source esp32` rather than `auto`: on a Mac with the optional `mac_wifi` helper installed and granted Location Services permission (untested), `auto` can pick host Wi-Fi and never listen for the node.
 
 ### 5. Open the UI
 
