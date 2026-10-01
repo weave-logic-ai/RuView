@@ -334,9 +334,11 @@ docker run --network host ruvnet/wifi-densepose:latest --source wifi --tick-ms 5
 
 Uses CoreWLAN via a Swift helper binary. macOS Sonoma 14.4+ redacts real BSSIDs; the adapter generates deterministic synthetic MACs so the multi-BSSID pipeline still works.
 
+**Requires the `mac_wifi` helper, which is not included.** The repository ships only its Swift source (`archive/v1/src/sensing/mac_wifi.swift`); the server runs a binary named `mac_wifi` from your `PATH` and fails the scan if it is missing (`v2/crates/wifi-densepose-wifiscan/src/adapter/macos_scanner.rs`). Building it needs the Xcode Command Line Tools. This path has not been validated on hardware for this guide.
+
 ```bash
-# Compile the Swift helper (once). The server runs `mac_wifi` from your PATH.
-swiftc -O archive/v1/src/sensing/mac_wifi.swift -o /usr/local/bin/mac_wifi
+# Build the helper yourself (once) into a directory on your PATH.
+swiftc -O archive/v1/src/sensing/mac_wifi.swift -o <dir-on-your-PATH>/mac_wifi
 
 # Run natively. The value is `wifi`; on macOS it scans through CoreWLAN.
 ./target/release/sensing-server --source wifi --http-port 3000 --ws-port 3001 --tick-ms 500
@@ -354,7 +356,7 @@ Real Channel State Information at 20 Hz with 56-192 subcarriers. Required for po
 
 The server's UDP listener binds to loopback (`127.0.0.1`) by default, so nodes on your LAN cannot reach it. Add `--udp-bind 0.0.0.0` together with `--udp-allow <node-subnet-cidr>` (the subnet your nodes are on). A routable bind with no allowlist and no `--udp-insecure-lan` makes the server exit. See the sensing server's [`SECURITY.md`](../v2/crates/wifi-densepose-sensing-server/SECURITY.md).
 
-Pass `--source esp32` explicitly. With the default `--source auto`, the server probes UDP for 2 s, then host Wi-Fi. On macOS (CoreWLAN) or Windows (`netsh`), a successful Wi-Fi probe selects the `wifi` source, and the server then does not bind UDP at all, so nodes that start sending later are never heard. The boot log shows the outcome on the `Data source:` line (`udp_receiver=false` in that case). With no ESP32 and no host Wi-Fi, `auto` serves data tagged `simulated` and switches to live on the first real frame.
+Pass `--source esp32` explicitly. With the default `--source auto`, the server probes UDP for 2 s, then host Wi-Fi. On Windows (`netsh`), or on macOS when the `mac_wifi` helper is installed (CoreWLAN), a successful Wi-Fi probe selects the `wifi` source, and the server then does not bind UDP at all, so nodes that start sending later are never heard. The boot log shows the outcome on the `Data source:` line (`udp_receiver=false` in that case). With no ESP32 and no host Wi-Fi, `auto` serves data tagged `simulated` and switches to live on the first real frame.
 
 ```bash
 # From source
