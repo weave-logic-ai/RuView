@@ -168,12 +168,15 @@ python firmware/esp32-csi-node/provision.py --port COM7 \
 ### 4. Start the sensing server
 
 ```bash
-cargo run -p wifi-densepose-sensing-server -- --http-port 3000 --source auto
+cargo run -p wifi-densepose-sensing-server -- --source esp32 \
+  --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 ```
+
+The UDP listener binds to loopback by default, so a node on your LAN needs `--udp-bind` and `--udp-allow` (or `--udp-insecure-lan`). Use `--source esp32` rather than `auto`: on a Mac, `auto` can pick host Wi-Fi and never listen for the node.
 
 ### 5. Open the UI
 
-Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
+Navigate to [http://localhost:8080/ui/](http://localhost:8080/ui/) in your browser. `/` is a plain info page; the dashboard is under `/ui/`.
 
 ### 6. (Optional) Upload a WASM sensing module
 

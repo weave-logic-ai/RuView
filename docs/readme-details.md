@@ -1491,8 +1491,8 @@ graph TB
 # Start with simulated data (no hardware)
 ./target/release/sensing-server --source simulate --ui-path ../../ui
 
-# Start with ESP32 CSI hardware
-./target/release/sensing-server --source esp32 --udp-port 5005
+# Start with ESP32 CSI hardware (LAN nodes need the UDP bind and allowlist)
+./target/release/sensing-server --source esp32 --udp-port 5005 --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 
 # Start with Windows WiFi RSSI
 ./target/release/sensing-server --source wifi

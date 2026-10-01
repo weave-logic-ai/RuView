@@ -28,7 +28,7 @@ docker run --rm --net=host \
 MQTT_PASSWORD='your-broker-password' \
 cargo run --release -p wifi-densepose-sensing-server \
     --features mqtt -- \
-    --source esp32 --mqtt \
+    --source esp32 --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr> --mqtt \
     --mqtt-host 192.168.1.10 \
     --mqtt-username homeassistant
 ```
