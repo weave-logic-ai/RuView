@@ -509,7 +509,7 @@ WiFi sensing works anywhere WiFi exists. No new hardware in most cases — just 
 
 | | Why WiFi sensing wins | Traditional alternative |
 |---|----------------------|----------------------|
-| 🔒 | **No video, no GDPR/HIPAA imaging rules** | Cameras require consent, signage, data retention policies |
+| 🔒 | **No video, so no camera rules** (no image retention or camera signage). Presence and vital-sign data can still be personal or health data under GDPR/HIPAA. | Cameras require consent, signage, data retention policies |
 | 🧱 | **Works through walls, shelving, debris** | Cameras need line-of-sight per room |
 | 🌙 | **Works in total darkness** | Cameras need IR or visible light |
 | 💰 | **$0-$8 per zone** (existing WiFi or ESP32) | Camera systems: $200-$2,000 per zone |

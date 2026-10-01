@@ -906,7 +906,7 @@ Import via HA UI: Settings → Automations & Scenes → Blueprints → Import.
 | `Raw` | full BFI matrix | local-only research (never networked) |
 | `Derived` | downsampled angles + risk score | operator-acknowledged LAN research mode |
 | `Anonymous` (default) | aggregate sensing only + risk score + rotating hash | production HA / Matter deployments |
-| `Restricted` | aggregate sensing only, identity fields stripped | care homes, GDPR/HIPAA-style regulated environments |
+| `Restricted` | aggregate sensing only, identity fields stripped | intended for care homes and GDPR/HIPAA-style regulated settings (design intent, not a compliance assessment) |
 
 The `enable_privacy_mode()` runtime toggle on `BfldPipeline` engages `Restricted` from any baseline without restarting the pipeline — useful for security-incident response.
 
