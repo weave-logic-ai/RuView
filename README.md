@@ -127,9 +127,11 @@ RuView turns ordinary WiFi into a contactless sensor. A $9 ESP32 board reads the
 # explicit unauthenticated opt-in; see docs/getting-started/docker.md for the
 # tested commands.
 docker pull ruvnet/wifi-densepose:latest
-# Then open http://localhost:3000/ui/
+# Run the command in that guide, then open http://localhost:3000/ui/
 
 # Option 2a: Live sensing with ESP32-S3 hardware ($9)
+# Tested path, including the server start and UDP bind:
+# docs/getting-started/quickstart-esp32-s3.md
 # Flash firmware, provision WiFi, and start sensing:
 python -m esptool --chip esp32s3 --port COM9 --baud 460800 \
   write_flash 0x0 bootloader.bin 0x8000 partition-table.bin \
@@ -145,7 +147,7 @@ idf.py set-target esp32c6 && idf.py build
 idf.py -p COM6 flash
 # C6 boot extras (vs S3): HE-LTF subcarrier tagging in ADR-018 bytes 18-19,
 #   802.15.4 mesh time-sync on channel 15, TWT setup when the AP supports it,
-#   opt-in LP-core wake-on-motion for ~5 µA battery seed nodes.
+#   opt-in LP-core wake-on-motion targeting ~5 µA battery seed nodes (unverified).
 # Since firmware v0.6.7: real LP-core RISC-V motion-gate program (debounce + motion
 #   counter) and a Wi-Fi 6 soft-AP with TWT Responder so two C6 boards can
 #   benchmark real iTWT without buying an 11ax router. Both default off,
