@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> **Coverage.** The newest versioned heading in this file is `v0.6.2-esp32` (2026-04-20). Work released after it, through firmware `v0.8.8-esp32`, is either under an `[Unreleased]` heading here or recorded only in [GitHub Releases](https://github.com/ruvnet/RuView/releases). The file also mixes the firmware `vX.Y.Z-esp32` line with the older application `1.x`–`3.x` line, so headings are not in one version order. Use GitHub Releases for firmware history.
+
 ## [Unreleased]
 
 ### Added
