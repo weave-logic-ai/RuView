@@ -151,7 +151,7 @@ Per ADR-115 §3.11.1, the Matter Bridge exposes a subset on standard clusters so
 | `--mqtt-rate-rssi <HZ>` | 0.1 | RSSI publish rate (Hz) |
 | `--mqtt-publish-pose` | off | Accepted; no pose source exists, so it only logs a warning |
 | `--mqtt-rate-pose <HZ>` | 1.0 | Unused while no pose entity is announced |
-| `--privacy-mode` | off | Strip HR/BR/pose from MQTT and Matter |
+| `--privacy-mode` | off | Strip HR/BR/pose from MQTT, Matter, REST, WebSocket and recordings |
 | `--data-dir <DIR>` | `data` | Holds `mqtt_client_id` (and other server state) |
 | `--matter` | off | Enable the HA-FABRIC Matter Bridge |
 | `--matter-setup-file <PATH>` | — | Where to write the QR + manual code |
@@ -173,6 +173,7 @@ When deploying in **healthcare**, **AAL (aging-in-place)**, or **commercial** se
 
 - **Strips** heart rate and breathing rate from every outbound MQTT publication (pose is never announced; see [Not announced](#not-announced)).
 - **Suppresses discovery** for those entities entirely: Home Assistant never sees them, and no availability or state topic is published for them.
+- **Applies to the rest of the server too.** The same fields are removed from REST responses, WebSocket frames and recordings, so another client on the HTTP or WebSocket port can't read what MQTT withholds. See [Privacy mode](../user-guide.md#privacy-mode-for-healthcare--aal) in the user guide.
 - **Keeps the semantic primitives enabled.** `someone_sleeping` and `possible_distress` still use breathing and heart rate *inside the server*; only the ON/OFF state crosses the wire (ADR-115 §3.12.3). If that is too much for your deployment, drop those two entities in Home Assistant.
 
 With `--privacy-mode`, 13 entities are announced per node. Privacy mode reduces what leaves the server. It does not by itself make a deployment compliant with any regulation.
