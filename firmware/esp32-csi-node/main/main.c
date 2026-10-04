@@ -42,6 +42,9 @@
 #include "c6_lp_core.h"            /* ADR-110: LP-core hibernation (no-op on S3) */
 #include "c6_antenna_select.h"     /* XIAO C6 RF switch (opt-in; generic C6 no-op) */
 #include "c6_sync_espnow.h"        /* ADR-110 D1 workaround: ESP-NOW sync */
+#if defined(CONFIG_ESPNOW_ILLUM_TX) || defined(CONFIG_ESPNOW_CSI_DIAG)
+#include "espnow_illum.h"          /* ESP-NOW illuminator spike */
+#endif
 #include "c6_softap_he.h"          /* ADR-110 B1/B2: HE/TWT soft-AP (no-op when disabled) */
 #ifdef CONFIG_CSI_MOCK_ENABLED
 #include "mock_csi.h"
@@ -528,6 +531,15 @@ void app_main(void)
         ESP_LOGW(TAG, "c6_sync_espnow_init failed: %s (continuing without ESP-NOW sync)",
                  esp_err_to_name(espnow_ret));
     }
+#if defined(CONFIG_ESPNOW_ILLUM_TX) || defined(CONFIG_ESPNOW_CSI_DIAG)
+    /* Spike (docs/espnow-csi-spike.md): rides on the ESP-NOW instance above. */
+    if (espnow_ret == ESP_OK) {
+        esp_err_t illum_ret = espnow_illum_start();
+        if (illum_ret != ESP_OK) {
+            ESP_LOGW(TAG, "espnow_illum_start failed: %s", esp_err_to_name(illum_ret));
+        }
+    }
+#endif
 #endif
 
     /* ADR-039: Initialize edge processing pipeline. */

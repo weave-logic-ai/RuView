@@ -753,3 +753,59 @@ config CSI_SEQ_DIAG
       Diagnostic. Emits the transmitter address and 802.11 sequence number for
       each CSI callback so the effect of the gate above can be measured rather
       than assumed. Verbose; leave off in normal operation.
+
+menu "ESP-NOW illuminator spike (diagnostic)"
+
+config ESPNOW_ILLUM_TX
+    bool "Broadcast ESP-NOW illuminator frames at a forced PHY rate"
+    default n
+    help
+      Feasibility spike (docs/espnow-csi-spike.md). Broadcasts a 20-byte
+      payload (magic, rate id, counter, mesh epoch) through the ESP-NOW
+      instance that c6_sync_espnow already owns, paced by esp_timer. Forcing
+      the rate applies to the shared broadcast peer, so the 10 Hz sync
+      beacons change rate too while this runs. Leave off in normal operation.
+
+choice ESPNOW_ILLUM_RATE
+    prompt "Illuminator PHY rate"
+    depends on ESPNOW_ILLUM_TX
+    default ESPNOW_ILLUM_RATE_CYCLE
+
+config ESPNOW_ILLUM_RATE_CYCLE
+    bool "Cycle 1 Mbps DSSS -> 6 Mbps 11g -> HT20 MCS0"
+config ESPNOW_ILLUM_RATE_11B_1M
+    bool "1 Mbps 802.11b (DSSS)"
+config ESPNOW_ILLUM_RATE_11G_6M
+    bool "6 Mbps 802.11g (OFDM)"
+config ESPNOW_ILLUM_RATE_HT20_MCS0
+    bool "HT20 MCS0 (OFDM)"
+
+endchoice
+
+config ESPNOW_ILLUM_CYCLE_S
+    int "Seconds per rate when cycling"
+    depends on ESPNOW_ILLUM_RATE_CYCLE
+    range 2 120
+    default 10
+
+config ESPNOW_ILLUM_HZ
+    int "Illuminator send rate (Hz)"
+    depends on ESPNOW_ILLUM_TX
+    range 1 100
+    default 50
+
+config ESPNOW_CSI_DIAG
+    bool "Log CSI yield from an ESP-NOW illuminator (1 Hz ILLUM_RX lines)"
+    default n
+    help
+      Feasibility spike receive side. Counts CSI callbacks whose source MAC
+      is ESPNOW_CSI_DIAG_SENDER_MAC and/or whose payload carries the
+      illuminator magic, and whether each won or lost the 50 Hz gate. Does
+      not change the ADR-018 stream. Leave off in normal operation.
+
+config ESPNOW_CSI_DIAG_SENDER_MAC
+    string "Illuminator source MAC (aa:bb:cc:dd:ee:ff; empty = magic only)"
+    depends on ESPNOW_CSI_DIAG
+    default ""
+
+endmenu

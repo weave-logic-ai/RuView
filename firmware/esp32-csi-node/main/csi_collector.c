@@ -17,6 +17,9 @@
 #include "edge_processing.h"
 #include "c6_timesync.h"  /* ADR-110: 802.15.4 epoch for cross-node alignment */
 #include "c6_sync_espnow.h" /* ADR-110 §A0.11: mesh-aligned epoch for sync packet */
+#ifdef CONFIG_ESPNOW_CSI_DIAG
+#include "espnow_illum.h"   /* ESP-NOW illuminator spike: receive diagnostic */
+#endif
 
 #include <string.h>
 #include "esp_log.h"
@@ -333,6 +336,12 @@ static void wifi_csi_callback(void *ctx, wifi_csi_info_t *info)
     }
 #else
     take = (now_us - s_last_process_us) >= CSI_MIN_PROCESS_INTERVAL_US;
+#endif
+#ifdef CONFIG_ESPNOW_CSI_DIAG
+    /* Spike: observe every callback before the gate and filter can drop it,
+     * and record which of the two would have. */
+    espnow_illum_diag_on_csi(info, take,
+                             !s_filter_mac_set || memcmp(info->mac, s_filter_mac, 6) == 0);
 #endif
     if (!take) {
         s_early_drop++;

@@ -76,6 +76,12 @@ if(CONFIG_WASM_ENABLE)
     list(APPEND REQUIRES wasm3)
 endif()
 
+# ESP-NOW illuminator feasibility spike (docs/espnow-csi-spike.md). Both
+# options default off; a normal build compiles none of it.
+if(CONFIG_ESPNOW_ILLUM_TX OR CONFIG_ESPNOW_CSI_DIAG)
+    list(APPEND SRCS "espnow_illum.c")
+endif()
+
 idf_component_register(
     SRCS ${SRCS}
     INCLUDE_DIRS "."

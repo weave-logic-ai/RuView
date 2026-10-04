@@ -1,0 +1,6 @@
+# ESP-NOW illuminator spike, SENDER overlay (ESP32-C6 node 5).
+# Layer LAST, after the board's normal defaults. See docs/espnow-csi-spike.md.
+CONFIG_ESPNOW_ILLUM_TX=y
+CONFIG_ESPNOW_ILLUM_RATE_CYCLE=y
+CONFIG_ESPNOW_ILLUM_CYCLE_S=10
+CONFIG_ESPNOW_ILLUM_HZ=50

@@ -56,11 +56,11 @@ FUZZ_JOBS     ?= 1
         test_vitals run_vitals test_mmwave_detect run_mmwave_detect host_tests \
         test_thermal run_thermal test_csi_sanitize run_csi_sanitize \
         test_c6_antenna run_c6_antenna test_serial_onboarding run_serial_onboarding \
-        run_delivery_contract test_ota_health run_ota_health
+        run_delivery_contract test_ota_health run_ota_health test_espnow_illum run_espnow_illum
 
 all: fuzz_serialize fuzz_edge fuzz_nvs test_adr110 test_vitals test_mmwave_detect \
      test_thermal test_csi_sanitize test_c6_antenna test_serial_onboarding \
-     test_ota_health
+     test_ota_health test_espnow_illum
 
 # --- XIAO ESP32-C6 RF switch selection ---
 # Host-side truth table for the GPIO14 antenna selector. GPIO3 is always driven
@@ -143,12 +143,21 @@ test_ota_health: test_ota_health.c $(MAIN_DIR)/ota_health.h
 run_ota_health: test_ota_health
 	./test_ota_health
 
+# --- ESP-NOW illuminator spike: payload codec, MAC match, seq continuity ---
+# Host-side. Includes ../main/espnow_illum_proto.h, the header the device
+# sender and CSI diagnostic both use, so test and firmware cannot drift.
+test_espnow_illum: test_espnow_illum_proto.c $(MAIN_DIR)/espnow_illum_proto.h
+	cc -std=c99 -Wall -Wextra -Werror -pedantic -I$(MAIN_DIR) -o $@ $<
+
+run_espnow_illum: test_espnow_illum
+	./test_espnow_illum
+
 run_delivery_contract:
 	python3 test_delivery_contract.py
 
 host_tests: run_adr110 run_vitals run_mmwave_detect run_thermal run_csi_sanitize \
-            run_c6_antenna run_serial_onboarding run_delivery_contract run_ota_health
-	@echo "Host tests passed (ADR-110 + CSI sanitation + vitals + mmwave + thermal + C6 antenna + USB onboarding + delivery contract + OTA health)"
+            run_c6_antenna run_serial_onboarding run_delivery_contract run_ota_health run_espnow_illum
+	@echo "Host tests passed (ADR-110 + CSI sanitation + vitals + mmwave + thermal + C6 antenna + USB onboarding + delivery contract + OTA health + ESP-NOW illuminator)"
 
 # --- Serialize fuzzer ---
 # Tests csi_serialize_frame() with random wifi_csi_info_t inputs.
@@ -186,5 +195,5 @@ run_all: run_serialize run_edge run_nvs
 clean:
 	rm -f fuzz_serialize fuzz_edge fuzz_nvs test_adr110 test_vitals test_mmwave_detect \
 		test_thermal test_csi_sanitize test_c6_antenna test_serial_onboarding \
-		test_ota_health
+		test_ota_health test_espnow_illum
 	rm -rf corpus_serialize/ corpus_edge/ corpus_nvs/

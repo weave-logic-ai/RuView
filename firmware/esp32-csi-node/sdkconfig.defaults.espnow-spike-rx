@@ -1,0 +1,7 @@
+# ESP-NOW illuminator spike, RECEIVER overlay (ESP32-S3 nodes).
+# Layer LAST, after the board's normal defaults. See docs/espnow-csi-spike.md.
+# Sender MAC is the illuminator's Wi-Fi STA MAC (C6 node 5 base MAC); the
+# diagnostic also matches on the payload magic, so a wrong MAC shows up as
+# illum_othermac>0 rather than as zero yield.
+CONFIG_ESPNOW_CSI_DIAG=y
+CONFIG_ESPNOW_CSI_DIAG_SENDER_MAC="02:00:00:00:00:02"
