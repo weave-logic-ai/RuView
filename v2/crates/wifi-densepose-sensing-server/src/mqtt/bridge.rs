@@ -157,6 +157,15 @@ impl SensingBridge {
         let mut out = Vec::with_capacity(arr.len());
         for node in arr {
             let n = node["node_id"].as_u64().unwrap_or(0);
+            // Prefer a string `device_id` (MediaTek MTC1 and other vendor
+            // receivers whose real identity is a 64-bit id, not a small mesh
+            // index) over the numeric `node_id` for the topic slot, so two
+            // receivers never collide onto one topic. ESP32/simulated nodes
+            // never set `device_id` and keep the numeric-suffix naming.
+            let node_key = node["device_id"]
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| n.to_string());
             // Each node carries its OWN classification under `node_inference`
             // (ADR-297, issue #1541); defer to the room aggregate only for
             // fields the node omits.
@@ -173,7 +182,7 @@ impl SensingBridge {
                 .or(agg_energy);
             let fall = self.take_fall(n, now);
             out.push(mk(
-                format!("{}-node{n}", self.base_id),
+                format!("{}-node{node_key}", self.base_id),
                 presence,
                 motion,
                 conf,
@@ -212,6 +221,29 @@ mod tests {
 
     fn snaps(v: Value, base: &str) -> Vec<VitalsSnapshot> {
         SensingBridge::new(base).ingest(&v, T0)
+    }
+
+    /// A `device_id` string (MediaTek MTC1 and other vendor receivers whose
+    /// real identity isn't a small mesh index) takes the MQTT topic slot
+    /// instead of `node_id`, and two devices never collide onto one topic.
+    #[test]
+    fn per_node_device_id_string_takes_priority_over_node_id() {
+        let v = json!({
+            "type": "sensing_update",
+            "timestamp": 1.0,
+            "classification": { "presence": true, "motion_level": "present_moving", "confidence": 0.7 },
+            "vital_signs": {},
+            "nodes": [
+                { "node_id": 0, "device_id": "a9be7e5bb1644d3a", "rssi_dbm": -42.0,
+                  "node_inference": { "classification": "present_moving", "confidence": 0.8 } },
+                { "node_id": 0, "device_id": "a9be7d5bb1644b87", "rssi_dbm": -55.0,
+                  "node_inference": { "classification": "absent", "confidence": 0.1 } }
+            ]
+        });
+        let out = snaps(v, "ruview");
+        assert_eq!(out.len(), 2, "one snapshot per device, despite identical node_id: 0");
+        assert!(out.iter().any(|s| s.node_id == "ruview-nodea9be7e5bb1644d3a"));
+        assert!(out.iter().any(|s| s.node_id == "ruview-nodea9be7d5bb1644b87"));
     }
 
     /// Regression for #872/#898/#1541: each node surfaces its OWN
