@@ -18,7 +18,7 @@
 
 #include "sdkconfig.h"
 
-#if defined(CONFIG_IDF_TARGET_ESP32C6) && defined(CONFIG_IEEE802154_ENABLED)
+#if (defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32C5)) && defined(CONFIG_IEEE802154_ENABLED)
 
 #include "c6_timesync.h"
 #include "esp_log.h"

@@ -48,10 +48,11 @@ set(REQUIRES
     led_strip
 )
 
-# ADR-110: C6-only components — pulled in when building for esp32c6.
-# Note: CONFIG_* symbols are not available in main CMakeLists.txt evaluation —
-# we use the IDF_TARGET variable that idf.py sets from sdkconfig.defaults / set-target.
-if(IDF_TARGET STREQUAL "esp32c6")
+# ADR-110 / ADR-368: HE-class (C6/C5) components — 802.15.4, LP-core (ulp) and
+# esp_hw_support are shared by both chips. Note: CONFIG_* symbols are not
+# available in main CMakeLists.txt evaluation — we use the IDF_TARGET variable
+# that idf.py sets from sdkconfig.defaults / set-target.
+if(IDF_TARGET STREQUAL "esp32c6" OR IDF_TARGET STREQUAL "esp32c5")
     list(APPEND REQUIRES ieee802154 ulp esp_hw_support)
 endif()
 
@@ -86,7 +87,7 @@ idf_component_register(
 # `ulp_embed_binary` compiles lp_core/main.c with the RISC-V LP toolchain
 # and links the resulting binary into the HP image, exposing shared symbols
 # via the auto-generated `ulp_main.h` header.
-if(IDF_TARGET STREQUAL "esp32c6" AND CONFIG_C6_LP_CORE_ENABLE)
+if((IDF_TARGET STREQUAL "esp32c6" OR IDF_TARGET STREQUAL "esp32c5") AND CONFIG_C6_LP_CORE_ENABLE)
     set(ulp_app_name ulp_main)
     set(ulp_sources "lp_core/main.c")
     # Source files in the HP component that include the generated ulp_main.h

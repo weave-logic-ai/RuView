@@ -222,7 +222,7 @@ static void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
 
-#if defined(CONFIG_IDF_TARGET_ESP32C6) && defined(CONFIG_C6_SOFTAP_HE_ENABLE)
+#if (defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32C5)) && defined(CONFIG_C6_SOFTAP_HE_ENABLE)
     /* ADR-110 B1/B2 cheap-unblock: bring up a soft-AP that advertises HE +
      * TWT Responder=1 so a second C6 board can negotiate iTWT against
      * this node. c6_softap_he_start() switches the mode to AP+STA. */
@@ -330,6 +330,8 @@ void app_main(void)
     const esp_app_desc_t *app_desc = esp_app_get_description();
 #if defined(CONFIG_IDF_TARGET_ESP32C6)
     const char *target_name = "ESP32-C6";
+#elif defined(CONFIG_IDF_TARGET_ESP32C5)
+    const char *target_name = "ESP32-C5";
 #elif defined(CONFIG_IDF_TARGET_ESP32S3)
     const char *target_name = "ESP32-S3";
 #else
@@ -358,6 +360,10 @@ void app_main(void)
      * coloured by CSI motion; off = clear the LED at boot. */
 #if defined(CONFIG_IDF_TARGET_ESP32C6)
     const int led_gpio = 8;
+#elif defined(CONFIG_IDF_TARGET_ESP32C5)
+    /* TODO ADR-368: verify C5-DevKitC-1 onboard WS2812 GPIO (schematic indicates 27).
+     * Wrong value only means the status LED stays dark — not fatal to CSI. */
+    const int led_gpio = 27;
 #else
     const int led_gpio = 48;
 #endif
@@ -397,7 +403,7 @@ void app_main(void)
      * Initialized BEFORE WiFi so it's available even when WiFi STA can't
      * connect — the radios are physically independent on the C6.
      * No-op on S3 (the helper compiles to an empty inline stub). */
-#if defined(CONFIG_IDF_TARGET_ESP32C6) && defined(CONFIG_C6_TIMESYNC_ENABLE)
+#if (defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32C5)) && defined(CONFIG_C6_TIMESYNC_ENABLE)
     esp_err_t ts_ret = c6_timesync_init(CONFIG_C6_TIMESYNC_CHANNEL);
     if (ts_ret != ESP_OK) {
         ESP_LOGW(TAG, "c6_timesync_init failed: %s (continuing without 15.4 sync)",
@@ -408,7 +414,7 @@ void app_main(void)
     /* ADR-110 P5: Optionally arm LP-core wake-on-motion (C6 only, opt-in).
      * Default off — only nodes flashed for battery-powered seed duty enable
      * this in menuconfig. */
-#if defined(CONFIG_IDF_TARGET_ESP32C6) && defined(CONFIG_C6_LP_CORE_ENABLE)
+#if (defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32C5)) && defined(CONFIG_C6_LP_CORE_ENABLE)
     if (c6_lp_core_was_motion_wake()) {
         ESP_LOGI(TAG, "boot cause: LP-core motion wake (running CSI burst)");
     }
@@ -507,7 +513,7 @@ void app_main(void)
      * No-op on S3 (the helper compiles to an empty inline stub). On C6
      * the AP may NACK — the helper logs and falls back to opportunistic.
      * Called only after WiFi STA connect (wifi_init_sta blocks until then). */
-#if defined(CONFIG_IDF_TARGET_ESP32C6) && defined(CONFIG_C6_TWT_ENABLE)
+#if (defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32C5)) && defined(CONFIG_C6_TWT_ENABLE)
     c6_twt_setup_default();
 #endif
 

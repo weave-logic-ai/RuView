@@ -102,6 +102,7 @@ menu "Edge Intelligence (ADR-039)"
     config EDGE_DSP_SAMPLE_HZ
         int "On-device edge DSP sample rate (Hz)"
         default 8 if IDF_TARGET_ESP32C6
+        default 8 if IDF_TARGET_ESP32C5
         default 20
         range 8 50
         help
@@ -332,8 +333,8 @@ menu "WASM Programmable Sensing (ADR-040)"
 
 endmenu
 
-menu "ESP32-C6 capabilities (ADR-110)"
-    depends on IDF_TARGET_ESP32C6
+menu "ESP32-C6/C5 (HE-class) capabilities (ADR-110, ADR-368)"
+    depends on IDF_TARGET_ESP32C6 || IDF_TARGET_ESP32C5
 
     config C6_TWT_ENABLE
         bool "Enable TWT (Target Wake Time) negotiation"
@@ -545,7 +546,7 @@ menu "Thermal monitoring"
 
 config THERMAL_MONITOR
     bool "Read the on-chip temperature sensor and throttle the radio"
-    depends on IDF_TARGET_ESP32C6
+    depends on IDF_TARGET_ESP32C6 || IDF_TARGET_ESP32C5
     default y
     help
       The C6 has a temperature sensor this firmware otherwise never reads.

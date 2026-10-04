@@ -74,7 +74,7 @@ static uint32_t s_rate_skip = 0;
 #define CSI_SELF_PING_INTERVAL_MS (1000U / CONFIG_CSI_SELF_PING_HZ)
 
 #ifndef CONFIG_EDGE_DSP_SAMPLE_HZ
-#if CONFIG_IDF_TARGET_ESP32C6
+#if defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32C5)
 #define CONFIG_EDGE_DSP_SAMPLE_HZ 8
 #else
 #define CONFIG_EDGE_DSP_SAMPLE_HZ 20
@@ -255,7 +255,7 @@ size_t csi_serialize_frame(const wifi_csi_info_t *info, uint8_t *buf, size_t buf
      * §A0.10). OR them together so frames signal sync from whichever
      * transport is alive on this node. Host can pair against the sync
      * packet (§A0.12) once it sees this bit. */
-#if defined(CONFIG_IDF_TARGET_ESP32C6) && defined(CONFIG_C6_TIMESYNC_ENABLE)
+#if (defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32C5)) && defined(CONFIG_C6_TIMESYNC_ENABLE)
     if (c6_timesync_is_valid()) flags |= (1 << 4);  /* 15.4 sync valid */
 #endif
     if (c6_sync_espnow_is_valid()) flags |= (1 << 4);  /* ESP-NOW sync valid (D1 workaround) */
