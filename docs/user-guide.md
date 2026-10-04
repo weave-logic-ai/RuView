@@ -908,7 +908,7 @@ Full design + operator guide: [`docs/integrations/home-assistant.md`](integratio
    `--source esp32` command from the
    [quickstart](getting-started/quickstart-esp32-s3.md). In Docker, add the
    token and UDP settings from [docker.md](getting-started/docker.md) as well.
-4. Within ~5 seconds HA auto-creates one **device** per RuView node. Announces 20 entities per device (21 with `--mqtt-publish-pose`). 9 have a state publisher; in a 190 s live run, 6 published state (presence, person count, motion level, motion energy, presence score, signal strength (per-node devices only)). The other 11 (the 10 semantic states and zone occupancy, plus pose when enabled) are announced; not yet publishing (ADR-115 P4.5 pending). The raw signals are presence, person count, HR, BR, motion, fall, RSSI, zones and pose; the semantic primitives are someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting, bathroom, fall-risk, bed-exit, no-movement and multi-room-transition. How this was measured: see the [Home Assistant guide](integrations/home-assistant.md#how-this-was-measured).
+4. Within ~5 seconds HA auto-creates one **device** per RuView node. Announces 15 entities per device (13 with `--privacy-mode`): 9 raw signals and 6 semantic states, each online only while the server has a source for it. Zones, pose, bathroom, bed-exit, meeting and multi-room entities are not announced because the sensing broadcast has nothing to drive them. See the [Home Assistant guide](integrations/home-assistant.md) for the entity list and how it was measured.
 
 ### Privacy mode for healthcare / AAL
 

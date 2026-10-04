@@ -17,16 +17,15 @@ with the current entrypoint, for two reasons.
 1. **Auth is required.** The container exits with code 64 unless you set
    `RUVIEW_API_TOKEN` or explicitly opt out with
    `RUVIEW_ALLOW_UNAUTHENTICATED=1`.
-2. **UDP stays on loopback.** The server inside the container binds its UDP
-   port to `127.0.0.1` by default. Publishing `5005/udp` is not enough; frames
-   from your board never reach a loopback listener. You must set
-   `RUVIEW_UDP_BIND=0.0.0.0` and either an allowlist or an explicit insecure
-   opt-in.
+2. **UDP needs a source guard.** The server inside the container binds its UDP
+   port to `127.0.0.1` unless you give it a guard. Set `RUVIEW_UDP_ALLOW` to the
+   node IP or CIDR (preferred), or `RUVIEW_UDP_INSECURE_LAN=true` to accept the
+   spoofing risk. The entrypoint then binds UDP to `0.0.0.0` for you; set
+   `RUVIEW_UDP_BIND` only to override that.
 
-The entrypoint does not pass `--udp-bind` itself, and on current `main` it
-does not set the UDP bind for you. The server reads `RUVIEW_UDP_BIND`,
-`RUVIEW_UDP_ALLOW` and `RUVIEW_UDP_INSECURE_LAN` directly from the
-environment, so you set them with `-e`, as shown below.
+The server reads `RUVIEW_UDP_BIND`, `RUVIEW_UDP_ALLOW` and
+`RUVIEW_UDP_INSECURE_LAN` from the environment, so you set them with `-e`, as
+shown below.
 
 ## Try it without hardware (simulated demo)
 
