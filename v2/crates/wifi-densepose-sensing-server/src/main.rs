@@ -2303,9 +2303,11 @@ mod privacy_mode_surface_tests {
     use tower::ServiceExt;
 
     fn update_with_biometrics() -> SensingUpdate {
+        // Fresh timestamp: `/sensing/latest` ages out stale updates.
+        let now = chrono::Utc::now().timestamp_millis() as f64 / 1000.0;
         serde_json::from_value(serde_json::json!({
             "type": "sensing_update",
-            "timestamp": 1.0,
+            "timestamp": now,
             "source": "simulated",
             "tick": 7,
             "nodes": [],
@@ -5344,7 +5346,7 @@ fn plan_source(
         // frames. Before #2097 these names fell into a catch-all that bound no
         // receiver, so nothing was ever ingested. Never run the ESP32-shaped
         // simulator alongside a vendor feed.
-        "mediatek" | "qualcomm" | "realtek" | "realtek_csi" => SourcePlan {
+        "qualcomm" | "realtek" | "realtek_csi" => SourcePlan {
             initial_source: requested.to_string(),
             bind_udp: true,
             run_simulator: false,
@@ -6023,6 +6025,8 @@ mod latest_update_staleness_tests {
             estimated_persons: None,
             node_features: None,
             room_inference: None,
+            activity: None,
+            classifier: None,
         }
     }
 
