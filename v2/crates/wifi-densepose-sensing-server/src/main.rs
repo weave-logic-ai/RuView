@@ -6819,6 +6819,31 @@ async fn health_live(State(state): State<SharedState>) -> Json<serde_json::Value
     }))
 }
 
+/// Governed-fuser positions for `/api/v1/status`, keyed by node id and sorted.
+fn engine_node_positions_json(positions: &HashMap<u8, [f32; 3]>) -> serde_json::Value {
+    let sorted: BTreeMap<String, [f32; 3]> = positions
+        .iter()
+        .map(|(id, p)| (id.to_string(), *p))
+        .collect();
+    serde_json::json!(sorted)
+}
+
+#[cfg(test)]
+mod engine_node_positions_json_tests {
+    use super::*;
+
+    #[test]
+    fn engine_node_positions_json_is_keyed_by_id() {
+        let configured: HashMap<u8, [f32; 3]> = [(12, [4.0, 3.0, 1.0]), (11, [0.5, 0.0, 1.0])]
+            .into_iter()
+            .collect();
+        assert_eq!(
+            engine_node_positions_json(&configured),
+            serde_json::json!({"11": [0.5, 0.0, 1.0], "12": [4.0, 3.0, 1.0]})
+        );
+    }
+}
+
 /// Lowercase hex of a 32-byte witness for JSON exposure.
 fn witness_hex(w: [u8; 32]) -> String {
     use std::fmt::Write;
@@ -6840,6 +6865,8 @@ async fn health_ready(State(state): State<SharedState>) -> Json<serde_json::Valu
         // witness + privacy class + recalibration flag, and the engine error
         // audit — previously write-only on AppState, now readable here.
         "trust": {
+            // Positions the governed fuser uses, from --node-positions.
+            "node_positions": engine_node_positions_json(s.engine_bridge.node_positions()),
             "last_witness": s.engine_bridge.last_trust_witness().map(witness_hex),
             "effective_class": s.engine_bridge.effective_class().map(|c| format!("{c:?}")),
             "demoted": s.engine_bridge.demoted(),
@@ -13031,6 +13058,9 @@ async fn main() {
         .as_ref()
         .map(|p| mediatek_activity::load_activity_state(p))
         .unwrap_or_default();
+    // The same map for the governed fuser behind `engine_bridge`, which
+    // otherwise places every node at the origin.
+    let mut engine_bridge_node_positions: HashMap<u8, [f32; 3]> = HashMap::new();
     let state: SharedState = Arc::new(RwLock::new(AppStateInner {
         latest_update: None,
         rssi_history: VecDeque::new(),
@@ -13154,6 +13184,7 @@ async fn main() {
                     // no `node_id:` prefix takes its list index as its id), so
                     // an existing `--node-positions` string keeps its meaning.
                     fuser.set_node_positions_by_id(node_positions_config.clone());
+                    engine_bridge_node_positions = node_positions_config.clone();
                 }
             }
             engine_bridge_multistatic_cfg = Some(MultistaticConfig {
@@ -13169,7 +13200,8 @@ async fn main() {
             "default",
             "Default Room",
             engine_bridge_multistatic_cfg,
-        ),
+        )
+        .with_node_positions(engine_bridge_node_positions),
         field_model: bootstrap_field_model,
         installation_id: args.installation_id.clone(),
         bootstrap_baseline: bootstrap_metadata.clone(),
