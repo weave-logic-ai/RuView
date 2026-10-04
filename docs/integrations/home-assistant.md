@@ -1,8 +1,8 @@
 # Home Assistant integration
 
-RuView publishes its full WiFi-sensing capability set to **Home Assistant** via MQTT auto-discovery (HA-DISCO) and to **any Matter controller** (Apple Home / Google Home / Alexa / SmartThings / HA) via a built-in Matter Bridge (HA-FABRIC). This document is the operator guide for both paths. Design rationale: [ADR-115](../adr/ADR-115-home-assistant-integration.md).
+RuView publishes its WiFi-sensing capability set to **Home Assistant** via MQTT auto-discovery (HA-DISCO); the sensing server must be built with `--features mqtt`. A Matter Bridge (HA-FABRIC) for Apple Home / Google Home / Alexa / SmartThings is designed but not built yet (see [Matter device-type mapping](#matter-device-type-mapping-planned-not-built)). This document is the operator guide for the MQTT path. Design rationale: [ADR-115](../adr/ADR-115-home-assistant-integration.md).
 
-> **Tested against** Home Assistant Core **2025.5**, Mosquitto add-on **6.4**, and Matter (chip-tool) **1.3**. Bump the matrix when you change tested versions.
+> **Tested against** Home Assistant Core **2025.5** and Mosquitto add-on **6.4**. Bump the matrix when you change tested versions.
 
 ---
 
@@ -28,7 +28,7 @@ docker run --rm --net=host \
 MQTT_PASSWORD='your-broker-password' \
 cargo run --release -p wifi-densepose-sensing-server \
     --features mqtt -- \
-    --source esp32 --mqtt \
+    --source esp32 --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr> --mqtt \
     --mqtt-host 192.168.1.10 \
     --mqtt-username homeassistant
 ```
@@ -110,9 +110,9 @@ Each node's HA device id is `wifi_densepose_<client-id>-node<N>`, where `<N>` is
 
 Releases before this change used `wifi-densepose-<pid>`, so every restart created a new set of devices. To remove the leftovers, publish an empty retained message to each stale `homeassistant/+/wifi_densepose_<old-id>…/+/config` topic, or delete the devices in Home Assistant.
 
-### Matter device-type mapping
+### Matter device-type mapping (planned, not built)
 
-Per ADR-115 §3.11.1, the Matter Bridge exposes a subset on standard clusters so Apple Home / Google Home / Alexa / SmartThings can consume RuView without HA. Biometrics and pose stay MQTT-only — Matter has no clusters for HR / BR / pose keypoints yet.
+ADR-115 §3.11.1 designs the mapping below for a future Matter Bridge, so Apple Home / Google Home / Alexa / SmartThings could consume RuView without HA. It is not built: the sensing server's `matter` cargo feature is empty, its live command-line parser does not accept the `--matter*` flags, and `cog-ha-matter` defers commissioning ("not yet implemented"). Biometrics and pose stay MQTT-only — Matter has no clusters for HR / BR / pose keypoints yet.
 
 | RuView | Matter cluster | Matter endpoint device type |
 |---|---|---|
@@ -397,9 +397,7 @@ Per [ADR-115 §3.9](../adr/ADR-115-home-assistant-integration.md#39-tls--auth), 
 
 ### Matter pairing fails
 
-1. Check the setup code in your `--matter-setup-file` log (defaults to printing on startup).
-2. Make sure the host running `sensing-server` is on the same WiFi subnet as the controller.
-3. If Apple Home complains about an unknown vendor, that's expected — RuView uses dev VID `0xFFF1` until P10 (see [ADR §9.9](../adr/ADR-115-home-assistant-integration.md#9b-matter-path-p7p10)). Tap "Add anyway".
+There is no Matter Bridge to pair yet; see [Matter device-type mapping](#matter-device-type-mapping-planned-not-built).
 
 ---
 
@@ -427,7 +425,7 @@ The 15 entities per node (9 raw signals and 6 semantic states, see the [Entity r
 |---|---|---|
 | **Fall detection + escalation** | `fall_detected` | Phase-acceleration spike + 3-frame debounce. Trigger a Lovelace alert, then escalate to a phone call if the person stays still for >2 min. Blueprint `07-fall-risk-escalation.yaml`. |
 | **Elderly inactivity anomaly** | `elderly_inactivity_anomaly` | Learns a person's normal day-pattern and flags deviations (e.g. usually up by 9 am, hasn't moved by 11 am). Blueprint `04-alert-elderly-inactivity-anomaly.yaml`. |
-| **Privacy-mode care monitoring** | `possible_distress` + `no_movement` + `someone_sleeping` | Run with `--privacy-mode` — heart rate and breathing values are stripped at the wire, but the *inferred states* keep working. Care staff sees "Distress detected" without ever seeing the underlying biometric numbers. The architectural win that makes RuView legally deployable in care homes. |
+| **Privacy-mode care monitoring** | `possible_distress` + `no_movement` + `someone_sleeping` | Run with `--privacy-mode` — heart rate and breathing values are stripped from MQTT; the inferred states are announced; not yet publishing (ADR-115 P4.5 pending). |
 | **Sleep apnea screening** | `breathing_rate_bpm` + `breathing_confidence` | Track per-night BPM histograms; flag dips that correlate with apnea events. |
 | **Post-surgery recovery monitoring** | `no_movement` + `bed_exit` + `breathing_rate_bpm` | Hospital-discharge patient at home; rule: "no bed exits in 12 h" triggers a check-in call. |
 | **Dementia wandering detection** | `multi_room_transition` + nighttime gate | Multi-room transitions between 23:00 and 06:00 alert a caregiver — without GPS tags or wearables the person may refuse to wear. |
@@ -505,7 +503,7 @@ A few patterns appear over and over; if you understand these you can build most 
 2. **"Two states agree" guards** — `presence == false` AND security panel disarmed AND no door sensor open → strong "house is empty" signal.
 3. **"Threshold + cooldown"** — `presence_score > 0.7` for 30 s before triggering (smooths over flicker), then a 5 min cooldown before re-arming (prevents oscillation).
 4. **"Calendar vs reality"** — pair an HA calendar event with `n_persons` → meeting-room auto-release, classroom unused-period detection.
-5. **"Privacy-mode + semantic-only"** — run `--privacy-mode`, expose only the semantic primitives to HA, keep biometrics on-device. The right default for any deployment with non-tenant occupants.
+5. **"Privacy-mode + semantic-only"** — run `--privacy-mode`, expose only the semantic primitives to HA, keep biometrics on-device (semantic primitives are announced; not yet publishing (ADR-115 P4.5 pending)). The right default for any deployment with non-tenant occupants.
 
 ### What about regulated environments?
 

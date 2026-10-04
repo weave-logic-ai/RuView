@@ -12,10 +12,12 @@
 #
 # Environment variables:
 #   CSI_SOURCE   — data source. Valid values:
-#                    auto       — try ESP32 then Windows WiFi, **fail-loud if no
-#                                 real hardware is detected** (issue #937 fix:
-#                                 the server no longer silently falls back to
-#                                 synthetic data — that's now opt-in only).
+#                    auto       — probe for ESP32 frames on UDP, then host
+#                                 Wi-Fi. If neither is found, serve data
+#                                 tagged "simulated" and switch to live on the
+#                                 first real frame (issue #1004, which replaced
+#                                 the #937 hard exit). Synthetic data is never
+#                                 tagged as production.
 #                    esp32      — listen for UDP CSI on the configured port.
 #                    wifi       — Windows-native WiFi capture.
 #                    simulated  — explicit demo mode with synthetic CSI.

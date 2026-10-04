@@ -28,6 +28,14 @@ Latest proposed decisions:
 
 This folder records significant architectural choices in the RuView / WiFi-DensePose project. The index tables below list a curated subset per domain; see the directory listing for the full set.
 
+**Numbering gap: ADR-358, ADR-359 and ADR-360 do not exist as files.** [ADR-361](ADR-361-single-transmitter-pairing.md) names them as earlier pairing experiments ("ADR-358 (falsified), ADR-359 (mechanism confirmed, not adopted), ADR-360 (falsified)"), but they were never committed to this repository. The numbers stay reserved; do not reuse them.
+
+**Duplicate numbers: three numbers name two files each.** Cite these by file name, not number alone:
+[ADR-263 (RTL8720F radar platform)](ADR-263-rtl8720f-2-4ghz-fmcw-radar-platform.md) and [ADR-263 (npm harness review)](ADR-263-ruview-npm-harness-deep-review.md);
+[ADR-264 (RTL8720F wire protocol)](ADR-264-rtl8720f-radar-wire-protocol.md) and [ADR-264 (rvagent MCP and CLI review)](ADR-264-rvagent-mcp-and-cli-npm-deep-review.md);
+[ADR-323 (physics-constrained pose refinement)](ADR-323-native-rust-physics-constrained-pose-refinement.md) and [ADR-323 (RTL8721Dx wire protocol)](ADR-323-rtl8721dx-ameba-csi-wire-protocol.md).
+[ADR-167](ADR-167-ddd-bounded-contexts.md) (an appendix to ADR-052) and [ADR-168](ADR-168-benchmark-proof.md) (a benchmark record) carry no Status line.
+
 ## Why ADRs?
 
 Building a system that turns WiFi signals into human pose estimation involves hundreds of non-obvious decisions: which signal processing algorithms to use, how to bridge ESP32 firmware to a Rust pipeline, whether to run inference on-device or on a server, how to handle multi-person separation with limited subcarriers.
@@ -75,7 +83,7 @@ Statuses: **Proposed** (under discussion), **Accepted** (approved and/or impleme
 | [ADR-039](ADR-039-esp32-edge-intelligence.md) | ESP32-S3 Edge Intelligence Pipeline (on-device vitals) | Accepted (hardware-validated) |
 | [ADR-040](ADR-040-wasm-programmable-sensing.md) | WASM Programmable Sensing (Tier 3) | Accepted |
 | [ADR-041](ADR-041-wasm-module-collection.md) | WASM Module Collection (65 edge modules) | Accepted (hardware-validated) |
-| [ADR-044](ADR-044-provisioning-tool-enhancements.md) | Provisioning Tool Enhancements | Proposed |
+| [ADR-050](ADR-050-provisioning-tool-enhancements.md) | Provisioning Tool Enhancements | Proposed |
 | [ADR-379](ADR-379-ota-first-boot-health-check.md) | OTA'd image confirms itself with a bounded health check (IP + CSI frame) or rolls back; OTA httpd stack sized from device data | Proposed (host-tested; hardware-verified on one S3 and one C6) |
 | [ADR-110](ADR-110-esp32-c6-firmware-extension.md) | ESP32-C6 firmware extension — Wi-Fi 6 / 802.15.4 / TWT / LP-core | Accepted, P1-P10 complete, firmware-side substrate closed at **[v0.7.0-esp32](https://github.com/ruvnet/RuView/releases/tag/v0.7.0-esp32)**. Companion docs: [`WITNESS-LOG-110`](../WITNESS-LOG-110.md) (13 §A0.x entries · 99.56 % cross-board RX · **104.1 µs smoothed sync stdev** · ≤100 µs target met), [`ADR-110-REVIEW-GUIDE`](../ADR-110-REVIEW-GUIDE.md) (one-page reviewer tour), [`ADR-110-BRANCH-STATE`](../ADR-110-BRANCH-STATE.md) (coordination map vs `feat/adr-115-ha-mqtt-matter`). Host decoders + tests: Python `SyncPacketParser` (10) + Rust `wifi_densepose_hardware::SyncPacket` (15), cross-language hex pin gates drift. |
 
@@ -101,14 +109,14 @@ Statuses: **Proposed** (under discussion), **Accepted** (approved and/or impleme
 | [ADR-006](ADR-006-gnn-enhanced-csi-pattern-recognition.md) | GNN-Enhanced CSI Pattern Recognition | Partial |
 | [ADR-015](ADR-015-public-dataset-training-strategy.md) | Public Dataset Strategy (MM-Fi, Wi-Pose) | Accepted |
 | [ADR-016](ADR-016-ruvector-integration.md) | RuVector Training Pipeline Integration | Accepted |
-| [ADR-017](ADR-017-ruvector-signal-mat-integration.md) | RuVector Signal + MAT Integration | Proposed |
+| [ADR-017](ADR-017-ruvector-signal-mat-integration.md) | RuVector Signal + MAT Integration | Accepted |
 | [ADR-020](ADR-020-rust-ruvector-ai-model-migration.md) | Migrate AI Inference to Rust (ONNX Runtime) | Accepted |
 | [ADR-023](ADR-023-trained-densepose-model-ruvector-pipeline.md) | Trained DensePose Model with RuVector Pipeline | Proposed |
-| [ADR-024](ADR-024-contrastive-csi-embedding-model.md) | Project AETHER: Contrastive CSI Embeddings | Required |
+| [ADR-024](ADR-024-contrastive-csi-embedding-model.md) | Project AETHER: Contrastive CSI Embeddings | Proposed |
 | [ADR-027](ADR-027-cross-environment-domain-generalization.md) | Project MERIDIAN: Cross-Environment Generalization | Proposed |
-| [ADR-149](ADR-149-public-community-leaderboard-huggingface.md) | AetherArena: public spatial-intelligence benchmark on Hugging Face | Proposed |
+| [ADR-149](ADR-149-public-community-leaderboard-huggingface.md) | AetherArena: public spatial-intelligence benchmark on Hugging Face | Accepted |
 | [ADR-150](ADR-150-rf-foundation-encoder.md) | RF Foundation Encoder: pose-preserving, subject/room/device-invariant CSI embedding | Proposed |
-| [ADR-151](ADR-151-room-calibration-specialist-training.md) | Per-Room Calibration & Specialized Model Training (room-first → bank of small ruVector specialists) | Proposed |
+| [ADR-151](ADR-151-room-calibration-specialist-training.md) | Per-Room Calibration & Specialized Model Training (room-first → bank of small ruVector specialists) | Accepted (Stages 1–5; HF-backbone distillation pending) |
 | [ADR-152](ADR-152-wifi-pose-sota-2026-intake.md) | WiFi-Pose SOTA 2026 Intake: geometry-conditioned calibration, external benchmarks, foundation-encoder recipe | Proposed |
 | [ADR-345](ADR-345-per-link-csi-and-node-to-node-ranging.md) | Per-link CSI attribution and node-to-node ranging — why phase-based position fails on this hardware (measured), and the coordination-free `(tx_mac, rx_seq)` join key that does not need it | Proposed — measurement layer implemented and validated on hardware; localization not built |
 | [ADR-348](ADR-348-independent-rust-multivariate-forecasting.md) | Independent Rust multivariate forecasting for RuView | Proposed |
@@ -159,9 +167,9 @@ Statuses: **Proposed** (under discussion), **Accepted** (approved and/or impleme
 | [ADR-097](ADR-097-adopt-rvcsi-as-ruview-csi-runtime.md) | Adopt rvCSI as RuView's primary CSI runtime (phased adoption) | Proposed |
 | [ADR-098](ADR-098-evaluate-midstream-fit.md) | Evaluate `ruvnet/midstream` for RuView's CSI / WebSocket / mesh pipeline | Rejected |
 | [ADR-099](ADR-099-midstream-introspection-tap.md) | Adopt midstream as RuView's real-time introspection + low-latency tap | Proposed |
-| [ADR-263](ADR-263-ruview-npm-harness-deep-review.md) | `@ruvnet/ruview` npm harness — deep review + optimization strategy | Proposed |
-| [ADR-264](ADR-264-rvagent-mcp-and-cli-npm-deep-review.md) | `@ruvnet/rvagent` MCP server + `@ruv/ruview-cli` — deep review + optimization strategy | Proposed |
-| [ADR-265](ADR-265-ruview-npm-distribution-strategy.md) | RuView npm distribution strategy — CI gate, provenance, version single-sourcing, namespace | Proposed |
+| [ADR-263](ADR-263-ruview-npm-harness-deep-review.md) | `@ruvnet/ruview` npm harness — deep review + optimization strategy | Accepted |
+| [ADR-264](ADR-264-rvagent-mcp-and-cli-npm-deep-review.md) | `@ruvnet/rvagent` MCP server + `@ruv/ruview-cli` — deep review + optimization strategy | Accepted |
+| [ADR-265](ADR-265-ruview-npm-distribution-strategy.md) | RuView npm distribution strategy — CI gate, provenance, version single-sourcing, namespace | Accepted |
 | [ADR-273](ADR-273-unified-rf-spatial-world-model.md) | Unified RF spatial world model — umbrella, anti-leakage protocol, acceptance gates | Accepted (P1 implemented) |
 | [ADR-274](ADR-274-universal-rf-encoder-adapter-registry.md) | Universal RF foundation encoder + hardware adapter registry | Accepted (P1 implemented) |
 | [ADR-275](ADR-275-rf-aware-gaussian-spatial-memory.md) | RF-aware Gaussian spatial memory | Accepted (P1 implemented) |
@@ -191,24 +199,24 @@ Statuses: **Proposed** (under discussion), **Accepted** (approved and/or impleme
 | [ADR-300](ADR-300-perception-substrate-program.md) | RuView perception substrate — phased 21-primitive program (calibration, evidence, trust, deployment) | Accepted (program; children ADR-301..317) |
 | [ADR-301](ADR-301-automatic-domain-calibration.md) | Automatic domain calibration — signed, versioned, invalidatable room fingerprint | Accepted (phase 1) |
 | [ADR-302](ADR-302-out-of-distribution-detection.md) | Out-of-distribution detection — KNOWN / DEGRADED / UNKNOWN gating | Accepted (phase 1) |
-| [ADR-303](ADR-303-ground-truth-synchronization.md) | Ground-truth synchronization — reference sensors as a formal validation plane | Proposed (phase 2) |
+| [ADR-303](ADR-303-ground-truth-synchronization.md) | Ground-truth synchronization — reference sensors as a formal validation plane | Accepted (initial implementation, phase 2) |
 | [ADR-304](ADR-304-evidence-engine.md) | Evidence engine — per-(room,device,subject) accuracy ledger | Accepted (phase 1) |
 | [ADR-305](ADR-305-authenticated-sensor-identity.md) | Authenticated sensor identity — RF chain of custody | Accepted (phase 1) |
 | [ADR-306](ADR-306-canonical-spatial-ontology.md) | Canonical spatial ontology — one Site→…→Event model for every surface | Accepted (phase 1) |
-| [ADR-307](ADR-307-persistent-identity-tracking.md) | Persistent identity & tracking — privacy-preserving probabilistic tracks | Proposed (phase 2) |
-| [ADR-308](ADR-308-sensor-placement-optimizer.md) | Sensor placement optimizer — floorplan + inventory → recommended positions | Proposed (phase 3) |
-| [ADR-309](ADR-309-active-sensing.md) | Active sensing — closed-loop RF experiment control | Proposed (phase 3) |
+| [ADR-307](ADR-307-persistent-identity-tracking.md) | Persistent identity & tracking — privacy-preserving probabilistic tracks | Accepted (initial implementation, phase 2) |
+| [ADR-308](ADR-308-sensor-placement-optimizer.md) | Sensor placement optimizer — floorplan + inventory → recommended positions | Accepted (initial implementation, phase 3) |
+| [ADR-309](ADR-309-active-sensing.md) | Active sensing — closed-loop RF experiment control | Accepted (initial implementation, phase 3) |
 | [ADR-310](ADR-310-80211bf-native-architecture.md) | 802.11bf-native architecture — standardized WLAN sensing as native measurement types | Proposed (phase 2) |
-| [ADR-311](ADR-311-real-sensor-fusion.md) | Real sensor fusion — uncertainty-aware, multiple observations → one world state | Proposed (phase 2) |
-| [ADR-312](ADR-312-long-term-spatial-memory.md) | Long-term spatial memory — learn the normal physics of a location | Proposed (phase 3) |
-| [ADR-313](ADR-313-counterfactual-inference.md) | Counterfactual inference — generative spatial reasoning | Proposed (phase 3) |
-| [ADR-314](ADR-314-information-gain-scheduler.md) | Information-gain scheduler — sample the most informative radios | Proposed (phase 3) |
-| [ADR-315](ADR-315-digital-rf-twin.md) | Digital RF twin — persistent per-deployment RF model | Proposed (phase 3) |
+| [ADR-311](ADR-311-real-sensor-fusion.md) | Real sensor fusion — uncertainty-aware, multiple observations → one world state | Accepted (initial implementation, phase 2) |
+| [ADR-312](ADR-312-long-term-spatial-memory.md) | Long-term spatial memory — learn the normal physics of a location | Accepted (initial implementation, phase 3) |
+| [ADR-313](ADR-313-counterfactual-inference.md) | Counterfactual inference — generative spatial reasoning | Accepted (initial implementation, phase 3) |
+| [ADR-314](ADR-314-information-gain-scheduler.md) | Information-gain scheduler — sample the most informative radios | Accepted (initial implementation, phase 3) |
+| [ADR-315](ADR-315-digital-rf-twin.md) | Digital RF twin — persistent per-deployment RF model | Accepted (initial implementation, phase 3) |
 | [ADR-316](ADR-316-fleet-control-plane.md) | Fleet control plane — provisioning to audit trails | Proposed (phase 2) |
 | [ADR-317](ADR-317-benchmark-multi-domain-scorecard.md) | Multi-domain benchmark scorecard — regressions cannot hide behind pooled accuracy | Accepted (phase 1) |
 | [ADR-318](ADR-318-capability-certificates.md) | Capability certificates — validated-for-this-environment claims | Accepted (phase 1) |
 | [ADR-319](ADR-319-witness-chain.md) | Witness chain — staged, signed epistemic envelope | Accepted (phase 1) |
-| [ADR-320](ADR-320-sensor-hal.md) | RuView sensor HAL — abstract all sensing hardware to one Observation type | Proposed (phase 2) |
+| [ADR-320](ADR-320-sensor-hal.md) | RuView sensor HAL — abstract all sensing hardware to one Observation type | Accepted (initial implementation, phase 2) |
 | [ADR-321](ADR-321-decision-policy-action-authorization.md) | Decision policy — action authorization conditioned on certificate class, freshness, uncertainty, evidence | Accepted (phase 1) |
 | [ADR-323](ADR-323-native-rust-physics-constrained-pose-refinement.md) | Native Rust physics-constrained pose refinement | Proposed |
 

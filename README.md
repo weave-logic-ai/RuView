@@ -11,11 +11,20 @@
 
 **Turn ordinary WiFi into a spatial intelligence / sensing system.** Detect people, measure breathing and heart rate, track movement, and monitor rooms — through walls, in the dark, with no cameras or wearables. Just physics.
 
-Works natively with the four major smart-home ecosystems: **[Home Assistant](docs/integrations/home-assistant.md)** via the HA-DISCO MQTT publisher, **[Apple Home & HomePod](docs/user-guide-apple-homepod.md)** as a discoverable HAP-1.1 bridge, **[Google Home](docs/integrations/home-assistant.md)** + **[Amazon Alexa](docs/integrations/home-assistant.md)** via the same HA bridge or a [Matter](docs/adr/ADR-122-bfld-ruview-ha-matter-exposure.md) endpoint. Siri, Google Assistant, and Alexa can voice presence and vitals by room with zero custom skills.
+Integrates with **[Home Assistant](docs/integrations/home-assistant.md)** through the HA-DISCO MQTT publisher, which is off by default (build the sensing server with `--features mqtt`). Google Home and Alexa reach RuView only through your own Home Assistant; there is no native integration. An opt-in **[Apple Home](docs/user-guide-apple-homepod.md)** HAP bridge exists as a Python HAP-python sidecar that exposes presence; the Rust `homecore-server --features hap-server` bridge mirrors HomeCore entities only and does not yet carry RuView sensing data. A Matter bridge is planned but not built. See [What's wired](#whats-wired).
 
-[![Works with Home Assistant](https://img.shields.io/badge/Works%20with-Home%20Assistant-blue?logo=home-assistant&logoColor=white&labelColor=41BDF5)](docs/integrations/home-assistant.md) [![Works with Matter](https://img.shields.io/badge/Works%20with-Matter-blue?labelColor=4285F4)](docs/adr/ADR-122-bfld-ruview-ha-matter-exposure.md) [![Works with Apple Home](https://img.shields.io/badge/Works%20with-Apple%20Home-black?logo=apple)](docs/user-guide-apple-homepod.md) [![Works with Google Home](https://img.shields.io/badge/Works%20with-Google%20Home-blue?logo=googlehome)](docs/integrations/home-assistant.md) [![Works with Alexa](https://img.shields.io/badge/Works%20with-Alexa-blue?logo=amazon&logoColor=white&labelColor=00CAFF)](docs/integrations/home-assistant.md)
+[![Home Assistant via MQTT (opt-in feature)](https://img.shields.io/badge/Home%20Assistant-MQTT%2C%20opt--in-blue?logo=home-assistant&logoColor=white&labelColor=41BDF5)](docs/integrations/home-assistant.md) [![Apple Home HAP bridge (opt-in feature)](https://img.shields.io/badge/Apple%20Home-HAP%20bridge%2C%20opt--in-black?logo=apple)](docs/user-guide-apple-homepod.md)
 
-> Drop into any **Home Assistant** install with one `--mqtt` flag. Or pair into **Apple Home / Google Home / Alexa / SmartThings** as a Matter Bridge. Ships 21 entities per node (11 raw signals + 10 inferred semantic states: someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting-in-progress, bathroom-occupied, fall-risk-elevated, bed-exit, no-movement, multi-room-transition) plus 3 starter HA Blueprints. See [`docs/integrations/home-assistant.md`](docs/integrations/home-assistant.md) · [ADR-115](docs/adr/ADR-115-home-assistant-integration.md).
+> Drop into a **Home Assistant** install: build the sensing server with `--features mqtt`, then run it with `--mqtt` (without the feature the flag parses but the publisher is a no-op). Announces 20 entities per device (21 with `--mqtt-publish-pose`). 9 have a state publisher; in a 190 s live run, 6 published state (presence, person count, motion level, motion energy, presence score, signal strength (per-node devices only)). The other 11 (the 10 semantic states and zone occupancy, plus pose when enabled) are announced; not yet publishing (ADR-115 P4.5 pending). How this was measured: see the [Home Assistant guide](docs/integrations/home-assistant.md#how-this-was-measured). The starter HA Blueprints in [`examples/ha-blueprints/`](examples/ha-blueprints/) use the semantic states, so they have nothing to act on until those publish. See [`docs/integrations/home-assistant.md`](docs/integrations/home-assistant.md) · [ADR-115](docs/adr/ADR-115-home-assistant-integration.md).
+
+### What's wired
+
+| Integration | State | How to enable | Source |
+|---|---|---|---|
+| Home Assistant (MQTT auto-discovery) | Built, off by default | Sensing server `--features mqtt`, run with `--mqtt` | `mqtt` feature in `v2/crates/wifi-densepose-sensing-server/Cargo.toml` |
+| Apple Home (HAP bridge) | Python sidecar (`scripts/ruview-hap-bridge.py`): built, opt-in, publishes presence. Rust `homecore-server` `hap-server`: built, mirrors HomeCore entities only; does not yet carry RuView sensing data. Pairing not validated in the getting-started guide | Python sidecar `scripts/ruview-hap-bridge.py` (HAP-python; see the [Apple Home guide](docs/user-guide-apple-homepod.md)), or Rust `homecore-server` built with `--features hap-server` | `scripts/ruview-hap-bridge.py`; `hap-server` feature in `v2/crates/homecore-server/Cargo.toml`; [ADR-125](docs/adr/ADR-125-ruview-apple-home-native-hap-bridge.md) (Proposed) |
+| Google Home, Alexa | Via Home Assistant (no native integration) | Home Assistant's own Google Home and Alexa integrations | none in this repo |
+| Matter bridge | Planned, not built; the `matter` feature is empty | not available | `matter = []` in `v2/crates/wifi-densepose-sensing-server/Cargo.toml`; [ADR-115](docs/adr/ADR-115-home-assistant-integration.md) §3.11 |
 
 ### π RuView is a WiFi sensing platform that turns radio signals into spatial intelligence.
 
@@ -117,29 +126,33 @@ RuView turns ordinary WiFi into a contactless sensor. A $9 ESP32 board reads the
 > |------|-----|---------------|
 > | 🫁 **Breathing rate** | Bandpass 0.1–0.5 Hz on wrapped phase, circular variance, zero-crossing BPM ([#593](https://github.com/ruvnet/RuView/issues/593)) | 6–30 BPM, real-time |
 > | 💓 **Heart rate** | Bandpass 0.8–2.0 Hz, zero-crossing BPM | 40–120 BPM, real-time |
-> | 👤 **Presence detection** | Trained head on Hugging Face ([`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained); v2 encoder = 82.3% held-out temporal-triplet acc, honestly re-benchmarked) + a phase-variance fallback that needs no model | < 1 ms, ~30 s ambient calibration |
+> | 👤 **Presence detection** | Trained head on Hugging Face ([`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained); the v2 encoder's 82.3% is a held-out temporal-triplet embedding-retrieval score, not presence accuracy) + a phase-variance fallback that needs no model | < 1 ms, ~30 s ambient calibration |
 > | 🧬 **CSI embeddings** | 128-dim contrastive encoder shipped on Hugging Face, 4-bit quantised variant fits in 8 KB | **164,183 emb/s** on M4 Pro |
-> | 🦴 **17-keypoint pose estimation** | `cog-pose-estimation` Cog v0.0.1 — signed aarch64 + x86_64 binaries on GCS, loads `pose_v1.safetensors` via Candle (the committed `pose_v1` is a **first-cut** on-device model: PCK@20 = 3.0%, below the ADR-079 ≥35% target, and its runtime path is still a `confidence=0` stub — see [Model weights: what's real, what's not](#model-weights-whats-real-whats-not); the **82.69%** figure below is the separate published MM-Fi benchmark, not this live cog). Train your own from paired data in 2.1 s on an RTX 5080 ([ADR-101](docs/adr/ADR-101-pose-estimation-cog.md), [benchmarks](docs/benchmarks/pose-estimation-cog.md)). **SOTA on MM-Fi:** [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) hits **82.69% torso-PCK@20** (ensemble 83.59%), beating MultiFormer (72.25%) and CSI2Pose (68.41%) on the matched MM-Fi `random_split` protocol — self-corrected and auditable on [AetherArena](https://huggingface.co/spaces/ruvnet/aether-arena) | 8.4 ms cold-start on a Pi 5 |
+> | 🦴 **17-keypoint pose estimation** | `cog-pose-estimation` Cog v0.0.1 — signed aarch64 + x86_64 binaries on GCS, loads `pose_v1.safetensors` via Candle (the committed `pose_v1` is a **first-cut** on-device model: PCK@20 = 3.0%, below the ADR-079 ≥35% target, and its runtime path is still a `confidence=0` stub — see [Model weights: what's real, what's not](#model-weights-whats-real-whats-not); the **82.69%** figure below is the separate published MM-Fi benchmark, not this live cog). Train your own from paired data in 2.1 s on an RTX 5080 ([ADR-101](docs/adr/ADR-101-pose-estimation-cog.md), [benchmarks](docs/benchmarks/pose-estimation-cog.md)). **Published MM-Fi result (CLAIMED):** [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) hits **82.69% torso-PCK@20** (ensemble 83.59%), beating MultiFormer (72.25%) and CSI2Pose (68.41%) on the matched MM-Fi `random_split` protocol (CLAIMED: `random_split` is the in-domain protocol, not subject-disjoint, and no mean-pose baseline is reported) — self-corrected and auditable on [AetherArena](https://huggingface.co/spaces/ruvnet/aether-arena) | 8.4 ms cold-start on a Pi 5 |
 > | 🚶 **Motion / activity** | Motion-band power + phase acceleration | Real-time |
 > | 🤸 **Fall detection** | Phase-acceleration threshold + 3-frame debounce + 5 s cooldown ([#263](https://github.com/ruvnet/RuView/issues/263)) | < 200 ms |
-> | 🧮 **Multi-person count** | Adaptive P95 normalisation + runtime-tunable dedup factor (`/api/v1/config/dedup-factor`, [#491](https://github.com/ruvnet/RuView/pull/491)). Six specialised learned counters available as Cogs: `occupancy-zones`, `elevator-count`, `queue-length`, `customer-flow`, `clean-room`, `person-matching` | Real-time, self-calibrating |
+> | 🧮 **Multi-person count** | Adaptive P95 normalisation + runtime-tunable dedup factor (`/api/v1/config/dedup-factor`, [#491](https://github.com/ruvnet/RuView/pull/491)). Six specialised learned counters available as Cogs: `occupancy-zones`, `elevator-count`, `queue-length`, `customer-flow`, `clean-room`, `person-matching`. Heuristic; never reports 0 ([#2058](https://github.com/ruvnet/RuView/issues/2058)). | Real-time, self-calibrating |
 > | 🌍 **World model prediction** | OccWorld TransVQVAE — 15-frame future occupancy prediction, 209 ms inference, 3.4 GB VRAM on RTX 5080; fine-tune on your space with `occworld_retrain.py` ([ADR-147](docs/adr/ADR-147-nvidia-cosmos-world-foundation-model-integration.md)) | 15 frames × 200×200×16 vox |
 > | 🧱 **Through-wall sensing** | Fresnel-zone geometry + multipath modeling | Up to ~5 m, signal-dependent |
 > | 🧠 **Edge intelligence** | **105-cog catalog** ([ADR-102](docs/adr/ADR-102-edge-module-registry.md)) live from `app-registry.json` — health, security, building, retail, industrial, research, AI, swarm, signal, network, and developer modules. Optional Cognitum Seed adds persistent vector store + kNN + witness chain | $140 total BOM |
 > | 🎯 **Camera-free pre-training** | Self-supervised contrastive encoder, 12.2M training steps on 60K frames, shipped on Hugging Face | 84 s/epoch retrain on M4 Pro |
-> | 📷 **Camera-supervised fine-tune** | MediaPipe + ESP32 CSI paired training, end-to-end Candle pipeline on RTX 5080 ([ADR-079](docs/adr/ADR-079-camera-supervised-pose-finetune.md)) | 2.1 s for 400 epochs (~5 ms/epoch) |
-> | 📡 **Multi-frequency mesh** | Channel hopping across 6 bands, TDM slot scheduling ([ADR-029](docs/adr/ADR-029-multifrequency-mesh.md)) | 3× sensing bandwidth |
+> | 📷 **Camera-supervised fine-tune** | MediaPipe + ESP32 CSI paired training, end-to-end Candle pipeline on RTX 5080 ([ADR-079](docs/adr/ADR-079-camera-ground-truth-training.md)) | 2.1 s for 400 epochs (~5 ms/epoch) |
+> | 📡 **Multi-frequency mesh** | Channel hopping across 6 bands, TDM slot scheduling ([ADR-029](docs/adr/ADR-029-ruvsense-multistatic-sensing-mode.md)) | 3× sensing bandwidth |
 > | 🌐 **3D point cloud fusion** | Camera depth (MiDaS) + WiFi CSI + mmWave radar → unified spatial model | 22 ms pipeline · 19K+ points/frame |
 >
 > Browse the full 105-module catalog (with practical descriptions, sizes, and difficulty) below in [🧩 Edge Module Catalog](#-edge-module-catalog), or visit [seed.cognitum.one/store](https://seed.cognitum.one/store).
 >
 > 🤗 **Pretrained weights**: download from [`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained) — see [Loading the pretrained model](#loading-the-pretrained-model) below for one-command setup.
 
+**New to RuView?** Start at [Getting started](docs/getting-started/README.md): one tested path from an ESP32-S3 to a live dashboard, plus Docker, provisioning and OTA, troubleshooting, and what's real. Each page says what was not tested.
+
 <details>
 <summary><strong>Quick start options</strong> — Docker, ESP32-S3/C6, Cognitum Seed, and Python</summary>
 
 ```bash
-# Option 1: Docker (simulated data, no hardware needed)
+# Option 1: Docker. The container exits unless you set RUVIEW_API_TOKEN or an
+# explicit unauthenticated opt-in; see docs/getting-started/docker.md for the
+# tested commands.
 docker pull ruvnet/wifi-densepose:latest
 export RUVIEW_API_TOKEN=$(openssl rand -hex 32)   # required; the container exits 64 without it
 docker run -p 127.0.0.1:3000:3000 -e RUVIEW_API_TOKEN ruvnet/wifi-densepose:latest
@@ -148,6 +161,8 @@ docker run -p 127.0.0.1:3000:3000 -e RUVIEW_API_TOKEN ruvnet/wifi-densepose:late
 # see docs/user-guide.md "Receiving ESP32 frames in Docker".
 
 # Option 2a: Live sensing with ESP32-S3 hardware ($9)
+# Tested path, including the server start and UDP bind:
+# docs/getting-started/quickstart-esp32-s3.md
 # Flash firmware, provision WiFi, and start sensing:
 python -m esptool --chip esp32s3 --port COM9 --baud 460800 \
   write_flash 0x0 bootloader.bin 0x8000 partition-table.bin \
@@ -163,8 +178,8 @@ idf.py set-target esp32c6 && idf.py build
 idf.py -p COM6 flash
 # C6 boot extras (vs S3): HE-LTF subcarrier tagging in ADR-018 bytes 18-19,
 #   802.15.4 mesh time-sync on channel 15, TWT setup when the AP supports it,
-#   opt-in LP-core wake-on-motion for ~5 µA battery seed nodes.
-# v0.6.7 adds: real LP-core RISC-V motion-gate program (debounce + motion
+#   opt-in LP-core wake-on-motion targeting ~5 µA battery seed nodes (unverified).
+# Since firmware v0.6.7: real LP-core RISC-V motion-gate program (debounce + motion
 #   counter) and a Wi-Fi 6 soft-AP with TWT Responder so two C6 boards can
 #   benchmark real iTWT without buying an 11ax router. Both default off,
 #   flip CONFIG_C6_{LP_CORE,SOFTAP_HE}_ENABLE to turn them on.
@@ -176,10 +191,11 @@ node scripts/snn-csi-processor.js --port 5006  # SNN real-time learning
 node scripts/mincut-person-counter.js --port 5006  # Correct person counting
 
 # Option 4: Python — live on PyPI (ADR-117)
-pip install ruview                        # or: pip install wifi-densepose
-# Both ship the same compiled PyO3 wheel (~250 KB, abi3-py310, Linux/macOS/Windows).
+pip install ruview                        # as of 2026-10-01, the 2.0.0a1 pre-release
+# `ruview` installs the wifi-densepose PyO3 wheel at the same version and re-exports it.
+# Plain `pip install wifi-densepose` resolves to the 1.99.0 tombstone, not the wheel.
 # Add [client] for the asyncio WebSocket + paho-mqtt clients:
-pip install "ruview[client]"              # or: pip install "wifi-densepose[client]"
+pip install "ruview[client]"
 
 # from ruview import BreathingExtractor, HeartRateExtractor   # equivalent to:
 # from wifi_densepose import BreathingExtractor, HeartRateExtractor
@@ -197,9 +213,9 @@ pip install "ruview[client]"              # or: pip install "wifi-densepose[clie
 >
 > | Option | Hardware | Cost | Full CSI | Capabilities |
 > |--------|----------|------|----------|-------------|
-> | **ESP32 + Cognitum Seed** (recommended) | ESP32-S3 + [Cognitum Seed](https://cognitum.one) | ~$140 | Yes | Presence, motion, breathing, heart rate, fall detection, multi-person counting, 17-keypoint pose (signed Cog binary — first-cut on-device model, see [Model weights: what's real, what's not](#model-weights-whats-real-whats-not)), 105-cog catalog, persistent vector store, kNN search, witness chain, MCP proxy |
+> | **ESP32 + Cognitum Seed** (recommended) | ESP32-S3 + [Cognitum Seed](https://cognitum.one) | ~$140 | Yes | Presence, motion, breathing, heart rate, fall detection, person counting (heuristic; never reports 0, [#2058](https://github.com/ruvnet/RuView/issues/2058)), 17-keypoint pose (signed Cog binary — first-cut on-device model, see [Model weights: what's real, what's not](#model-weights-whats-real-whats-not)), 105-cog catalog, persistent vector store, kNN search, witness chain, MCP proxy |
 > | **ESP32 Mesh** | 3-6× ESP32-S3 + WiFi router | ~$54 | Yes | Same capabilities as above without the persistent-memory features |
-> | **ESP32-C6 research node** ([ADR-110](docs/adr/ADR-110-esp32-c6-firmware-extension.md), [witness](docs/WITNESS-LOG-110.md), [reviewer guide](docs/ADR-110-REVIEW-GUIDE.md), [firmware v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0-esp32)) | ESP32-C6-DevKit ($6–10) | ~$10 | Yes (Wi-Fi 6 capable) | Dual-target CSI with **99.56% measured ESP-NOW sync match** and measured HE-LTF capture on IDF 5.5.2. TWT and ~5 µA operation still need hardware validation. |
+> | **ESP32-C6 research node** ([ADR-110](docs/adr/ADR-110-esp32-c6-firmware-extension.md), [witness](docs/WITNESS-LOG-110.md), [reviewer guide](docs/ADR-110-REVIEW-GUIDE.md), [v0.7.0, the release that closed ADR-110's firmware work](https://github.com/ruvnet/RuView/releases/tag/v0.7.0-esp32), [current firmware releases](https://github.com/ruvnet/RuView/releases)) | ESP32-C6-DevKit ($6–10) | ~$10 | Yes (Wi-Fi 6 capable) | Dual-target CSI with **99.56% measured ESP-NOW sync match** and measured HE-LTF capture on IDF 5.5.2. TWT and ~5 µA operation still need hardware validation. |
 > | **Research NIC** | Intel 5300 / Atheros AR9580 | ~$50-100 | Yes | Full CSI with 3x3 MIMO |
 > | **Qualcomm CSI beta** ([ADR-268](docs/adr/ADR-268-qualcomm-atheros-csi-platform.md)) | QCA9300 now; QCN9074/QCN9274 experimental | ~$30-200 | Simulator now; hardware adapter gated | Rust `QCS1` codec, deterministic replay, UDP/API integration; modern ath11k/ath12k profiles do not claim public CSI export |
 > | **Vendor provider beta** ([ADR-270](docs/adr/ADR-270-vendor-rf-sensing-integration-program.md)) | Origin, Plume, Mist, NETGEAR, Electric Imp, RF Solutions, Luma, Nest, Linksys, Wifigarden | Varies | Capability-dependent | Bounded Rust adapters and deterministic fixtures; telemetry/network-only/unsupported states cannot masquerade as CSI |
@@ -253,7 +269,7 @@ huggingface-cli download ruvnet/wifi-densepose-pretrained --local-dir models/wif
 
 **Quantization choices** (all in the HF repo): `model-q2.bin` (4 KB) · `model-q4.bin` ⭐ recommended (8 KB) · `model-q8.bin` (16 KB) · `model.safetensors` full (48 KB)
 
-The separate **17-keypoint pose-estimation model** is now published at [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) — **82.69% torso-PCK@20** on MM-Fi (single model) / **83.59%** (3-model ensemble + TTA), beating the prior published SOTA MultiFormer (72.25%) and CSI2Pose (68.41%) on the matched `random_split` protocol. See **Results & proof** below.
+The separate **17-keypoint pose-estimation model** is now published at [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) — **82.69% torso-PCK@20** on MM-Fi (single model) / **83.59%** (3-model ensemble + TTA), beating the prior published SOTA MultiFormer (72.25%) and CSI2Pose (68.41%) on the matched `random_split` protocol (CLAIMED: `random_split` is the in-domain protocol, not subject-disjoint, and no mean-pose baseline is reported). See **Results & proof** below.
 
 ### Results & proof
 
@@ -264,10 +280,10 @@ See the measured benchmarks, witness records, and one-command reproducibility ch
 
 | What | Where | Numbers |
 |------|-------|---------|
-| **MM-Fi pose model (SOTA)** | [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) | 82.69% torso-PCK@20 (single) · 83.59% (ensemble+TTA) · 75K-param micro variant 74.30% |
+| **MM-Fi pose model** (CLAIMED, `random_split`) | [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) | 82.69% torso-PCK@20 (single) · 83.59% (ensemble+TTA) · 75K-param micro variant 74.30% |
 | **AetherArena benchmark Space** | [`ruvnet/aether-arena`](https://huggingface.co/spaces/ruvnet/aether-arena) | self-correcting, auditable MM-Fi leaderboard |
 | **Full MM-Fi study (honest picture)** | [`docs/benchmarks/mmfi-wifi-sensing-study.md`](docs/benchmarks/mmfi-wifi-sensing-study.md) | pose + action; zero-shot cross-subject ~64%, labeled in-room calibration → 72.2% |
-| **Efficiency frontier** | [`docs/benchmarks/wifi-pose-efficiency-frontier.md`](docs/benchmarks/wifi-pose-efficiency-frontier.md) | SOTA-beating MM-Fi pose in a ~37 KB int4 model; live ESP32 compatibility not established |
+| **Efficiency frontier** | [`docs/benchmarks/wifi-pose-efficiency-frontier.md`](docs/benchmarks/wifi-pose-efficiency-frontier.md) | MM-Fi pose (CLAIMED, `random_split`) in a ~37 KB int4 model; live ESP32 compatibility not established |
 | **Pretrained encoder** | [`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained) | 82.3% held-out temporal-triplet, 8 KB int4 |
 | **Reproducible proof (Trust Kill Switch)** | [`archive/v1/data/proof/verify.py`](archive/v1/data/proof/verify.py) + [`expected_features.sha256`](archive/v1/data/proof/expected_features.sha256) | one-command deterministic pipeline replay (SHA-256 of output vs published hash) |
 | **Benchmark-proof ADR** | [ADR-168](docs/adr/ADR-168-benchmark-proof.md) | how the numbers are produced and verified |
@@ -294,7 +310,7 @@ levels. Read the label, not the headline ([ADR-187](docs/adr/ADR-187-archive-v1-
 
 | Tier | Checkpoint(s) | Honest status |
 |------|---------------|---------------|
-| **Real & validated** | [`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained) (CSI encoder + presence head) · [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) (17-keypoint pose) · `cog-person-count/count_v1` | **MEASURED / published.** Presence = 82.3% held-out temporal-triplet accuracy (the old "100% presence" figure was retracted); MM-Fi pose = 82.69% torso-PCK@20 on the `random_split` protocol. These are the pose/presence numbers the project stands behind today. |
+| **Published, externally reported** | [`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained) (CSI encoder + presence head) · [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) (17-keypoint pose) · `cog-person-count/count_v1` | **CLAIMED (published).** v2 CSI encoder: 82.3% held-out temporal-triplet embedding-retrieval accuracy. This is not presence or occupancy accuracy (the old "100% presence" figure was retracted). MM-Fi pose: 82.69% torso-PCK@20 on MM-Fi `random_split` (not subject-disjoint; no mean-pose baseline reported). |
 | **Real but weak (honestly labeled)** | committed `v2/crates/cog-pose-estimation/cog/artifacts/pose_v1.safetensors` | First-cut on-device model. **PCK@20 = 3.0% / PCK@50 = 18.5%** on a 217-sample holdout — **below the ADR-079 target of ≥ 35%.** Learns coarse structure (`r_hip` 77% PCK@50); distal/face joints near-random. Its runtime path in `cog-pose-estimation/src/inference.rs` is still a centred-skeleton **stub returning `confidence=0`** — the weights are not yet wired in. Full disclosure in the [cog README](v2/crates/cog-pose-estimation/cog/README.md). |
 | **Architecture only, no weights** | `archive/v1` `DensePoseHead` | Random `kaiming_normal_` init, **no checkpoint of any kind** (zero `.pth`/`.onnx`/`.safetensors` files under `archive/v1/`). Deprecated and superseded — see [`archive/v1/DEPRECATED.md`](archive/v1/DEPRECATED.md). Do not expect real pose output from it. |
 
@@ -478,7 +494,7 @@ Browse and install modules at [seed.cognitum.one/store](https://seed.cognitum.on
 | `quantum-coherence` | Quantum-inspired model for advanced signal states | 16 KB | Hard |
 | `self-healing-mesh` | Keeps sensor mesh running even when nodes drop out | 14 KB | Hard |
 
-> ℹ️ Build your own cog: see [ADR-100](docs/adr/ADR-100-cog-packaging-specification.md) for the packaging spec. The first cog this repo ships into the catalog lives in [v2/crates/cog-pose-estimation/](v2/crates/cog-pose-estimation/) (17-keypoint WiFi pose, [ADR-101](docs/adr/ADR-101-pose-estimation-cog.md)).
+> ℹ️ Build your own cog: see [ADR-100](docs/adr/ADR-100-cog-packaging-specification.md) for the packaging spec. The first cog this repo ships into the catalog lives in [v2/crates/cog-pose-estimation/](v2/crates/cog-pose-estimation/) (17-keypoint WiFi pose, [ADR-101](docs/adr/ADR-101-pose-estimation-cog.md); the committed `pose_v1` is a first-cut model at PCK@20 = 3.0%, see [Model weights: what's real, what's not](#model-weights-whats-real-whats-not)).
 
 </details>
 
@@ -529,7 +545,7 @@ WiFi sensing works anywhere WiFi exists. No new hardware in most cases — just 
 
 | | Why WiFi sensing wins | Traditional alternative |
 |---|----------------------|----------------------|
-| 🔒 | **No video, no GDPR/HIPAA imaging rules** | Cameras require consent, signage, data retention policies |
+| 🔒 | **No video, so no camera rules** (no image retention or camera signage). Presence and vital-sign data can still be personal or health data under GDPR/HIPAA. | Cameras require consent, signage, data retention policies |
 | 🧱 | **Works through walls, shelving, debris** | Cameras need line-of-sight per room |
 | 🌙 | **Works in total darkness** | Cameras need IR or visible light |
 | 💰 | **$0-$8 per zone** (existing WiFi or ESP32) | Camera systems: $200-$2,000 per zone |
@@ -577,7 +593,7 @@ WiFi sensing gives robots and autonomous systems a spatial awareness layer that 
 |----------|-------------|----------|------------|-------------|
 | **Cobot safety zones** | Detect human presence near collaborative robots — auto-slow or stop before contact, even behind obstructions | 2-3 ESP32-S3 per cell | Presence latency <100ms | [Forklift Proximity](docs/edge-modules/industrial.md), [Perimeter Breach](docs/edge-modules/security.md) |
 | **Warehouse AMR navigation** | Autonomous mobile robots sense humans around blind corners, through shelving racks — no LIDAR occlusion | ESP32 mesh along aisles | Through-shelf detection | [Forklift Proximity](docs/edge-modules/industrial.md), [Loitering](docs/edge-modules/security.md) |
-| **Android / humanoid spatial awareness** | Ambient human pose sensing for social robots — detect gestures, approach direction, and personal space without cameras always on | Onboard ESP32-S3 module | 17-keypoint pose | [Gesture Language](docs/edge-modules/exotic.md), [Emotion Detection](docs/edge-modules/exotic.md) |
+| **Android / humanoid spatial awareness** | Ambient human pose sensing for social robots — detect gestures, approach direction, and personal space without cameras always on | Onboard ESP32-S3 module | 17-keypoint pose (on-device model is first-cut, PCK@20 = 3.0%; see [Model weights](#model-weights-whats-real-whats-not)) | [Gesture Language](docs/edge-modules/exotic.md), [Emotion Detection](docs/edge-modules/exotic.md) |
 | **Manufacturing line monitoring** | Worker presence at each station, ergonomic posture alerts, headcount for shift compliance — works through equipment | Industrial AP per zone | Pose + breathing | [Confined Space](docs/edge-modules/industrial.md), [Gait Analysis](docs/edge-modules/medical.md) |
 | **Construction site safety** | Exclusion zone enforcement around heavy machinery, fall detection from scaffolding, personnel headcount | Ruggedized ESP32 mesh | Alert <2s, through-dust | [Panic Motion](docs/edge-modules/security.md), [Structural Vibration](docs/edge-modules/industrial.md) |
 | **Agricultural robotics** | Detect farm workers near autonomous harvesters in dusty/foggy field conditions where cameras are unreliable | Weatherproof ESP32 nodes | Range ~10m open field | [Forklift Proximity](docs/edge-modules/industrial.md), [Rain Detection](docs/edge-modules/exotic.md) |
@@ -749,7 +765,7 @@ Start with the user, build, and calibration guides; expand for the full referenc
 | [Build Guide](docs/build-guide.md) | Building from source (Rust and Python) |
 | [Calibration & Room Training Guide](docs/calibration-guide.md) | What `calibrate`/`enroll`/`train-room` actually enforce: minimum frame counts, per-anchor quality gates, the pet/small-motion presence-detection caveat, and empty-room baseline conditions — grounded in the real code, not just ADR-135/151 |
 | [Trust State & Engine Errors](docs/trust-and-engine-errors.md) | What `engine_error_count` and `demoted` mean on `/api/v1/status`, exact trigger conditions, the current diagnostic gap (no per-cause breakdown), the `WDP_GUARD_INTERVAL_US` recovery path, and why a converted Hugging Face model isn't shown to be the cause in code |
-| [**Home Assistant + Matter Integration**](docs/integrations/home-assistant.md) | **Works with Home Assistant** via MQTT auto-discovery + **Works with Matter** (Apple Home / Google Home / Alexa / SmartThings) — full entity catalog, 3 starter blueprints, Lovelace dashboards, privacy mode, threshold tuning ([ADR-115](docs/adr/ADR-115-home-assistant-integration.md)). |
+| [**Home Assistant Integration**](docs/integrations/home-assistant.md) | Home Assistant via MQTT auto-discovery (opt-in `--features mqtt`; Matter bridge planned, not built, see [What's wired](#whats-wired)) — full entity catalog, starter blueprints (they act on semantic states, which are announced; not yet publishing (ADR-115 P4.5 pending)), Lovelace dashboards, privacy mode, threshold tuning ([ADR-115](docs/adr/ADR-115-home-assistant-integration.md)). |
 | [**BFLD — Beamforming Feedback Layer for Detection**](v2/crates/wifi-densepose-bfld/README.md) | New privacy-gated WiFi sensing layer that measures + structurally prevents identity leakage from 802.11ac/ax Beamforming Feedback Information. Three type-enforced invariants (raw BFI never exits node, identity embedding is in-RAM-only, cross-site correlation cryptographically impossible via per-site BLAKE3 keyed hash + daily rotation). Ships full operator surface (`BfldPipeline`, `BfldPipelineHandle`, the Soul Signature §3.6 per-channel matcher `EnrolledMatcher`/`SoulMatchOracle` — experimental; named identity is data-gated, **measured** as not-separable on WiFi-only channels alone), MQTT topic router + HA-DISCO + availability + LWT, 3 operator HA blueprints, two runnable examples, eclipse-mosquitto:2 CI service container. 327+ tests. [ADR-118](docs/adr/ADR-118-bfld-beamforming-feedback-layer-for-detection.md) umbrella + sub-ADRs [119](docs/adr/ADR-119-bfld-frame-format-and-wire-protocol.md)/[120](docs/adr/ADR-120-bfld-privacy-class-and-hash-rotation.md)/[121](docs/adr/ADR-121-bfld-identity-risk-scoring.md)/[122](docs/adr/ADR-122-bfld-ruview-ha-matter-exposure.md)/[123](docs/adr/ADR-123-bfld-capture-path-nexmon-and-esp32.md). Research dossier: [`docs/research/BFLD/`](docs/research/BFLD/) (11 files, 13,544 words). |
 | [**SENSE-BRIDGE — rvagent MCP server**](tools/ruview-mcp/README.md) | Dual-transport MCP server (`@ruvnet/rvagent`) bridging the RuView sensing stack to AI agents (Claude Code, Cursor, ruflo swarms). 6 tools wired: `ruview.presence.now`, `ruview.vitals.get_{breathing,heart_rate,all}`, `ruview.bfld.last_scan`, `ruview.bfld.subscribe`. stdio + Streamable HTTP (`POST /mcp`, Origin-validated, bearer-token auth, `127.0.0.1` bind). Full 20-tool Zod schema barrel + 5 RUVIEW-POLICY governance tools. 93 tests. [ADR-124](docs/adr/ADR-124-rvagent-mcp-ruvector-npm-integration.md). Try: `npx @ruvnet/rvagent stdio`. |
 | [Semantic Primitives — Precision/Recall](docs/integrations/semantic-primitives-metrics.md) | Per-primitive F1 on the held-out paired-capture set: someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting, bathroom, fall-risk, bed-exit, no-movement, multi-room. |

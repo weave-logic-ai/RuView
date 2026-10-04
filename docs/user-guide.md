@@ -91,15 +91,25 @@ No hardware? The system runs in **simulated mode** with synthetic CSI data.
 
 ## Installation
 
+**First time with an ESP32-S3 board?** Follow
+[Quickstart: ESP32-S3 to a live dashboard](getting-started/quickstart-esp32-s3.md).
+It covers flashing, provisioning, starting the server and opening the UI. The
+sections below cover the other install variants.
+
 ### Docker (Recommended)
 
-The fastest path. No toolchain installation needed.
+No toolchain installation needed. The full, tested Docker instructions are in
+[getting-started/docker.md](getting-started/docker.md).
 
 ```bash
 docker pull ruvnet/wifi-densepose:latest
 ```
 
 Multi-architecture image (amd64 + arm64). Works on Intel/AMD and Apple Silicon Macs. Contains the Rust sensing server, Three.js UI, and all signal processing.
+The container exits with code 64 unless you set `RUVIEW_API_TOKEN` (or opt out
+with `RUVIEW_ALLOW_UNAUTHENTICATED=1` for loopback or lab use), and it needs
+extra `RUVIEW_UDP_*` settings to receive ESP32 frames. See
+[docker.md](getting-started/docker.md).
 
 **Data source selection:** Use the `CSI_SOURCE` environment variable to select the sensing mode:
 
@@ -180,14 +190,16 @@ See the full crate list and dependency order in [CLAUDE.md](../CLAUDE.md#crate-p
 
 ### Python wheel (pip) — ADR-117
 
-The Python API ships as **two interchangeable PyPI packages** — same
-compiled PyO3 wheel under both names; pick whichever import name
-reads better in your code:
+The Python API is the `wifi-densepose` PyO3 wheel. `ruview` is a thin
+package that installs it at the same version and re-exports it, so both
+import names work. Install `ruview`: the only published 2.x versions are
+pre-releases, and a plain `pip install wifi-densepose` resolves to the
+1.99.0 tombstone instead of the wheel.
 
-| PyPI | Install | Latest | Import |
+| PyPI | Install | Resolves to (2026-10-01) | Import |
 |---|---|---|---|
-| [`ruview`](https://pypi.org/project/ruview/) | `pip install ruview` | `2.0.0a1` | `from ruview import ...` |
-| [`wifi-densepose`](https://pypi.org/project/wifi-densepose/) | `pip install wifi-densepose` | `2.0.0a1` | `from wifi_densepose import ...` |
+| [`ruview`](https://pypi.org/project/ruview/) | `pip install ruview` | `ruview 2.0.0a1` + `wifi-densepose 2.0.0a1` | `from ruview import ...` |
+| [`wifi-densepose`](https://pypi.org/project/wifi-densepose/) | `pip install wifi-densepose` | `1.99.0` tombstone (needs `--pre` for `2.0.0a1`) | `from wifi_densepose import ...` |
 
 ```bash
 pip install ruview                        # core DSP (~250 KB compiled wheel)
@@ -315,9 +327,8 @@ stops the server at startup with an error that lists them.
 Default in Docker. Generates synthetic CSI data exercising the full pipeline.
 
 ```bash
-# Docker
-docker run -p 3000:3000 ruvnet/wifi-densepose:latest
-# (--source auto is the default; falls back to simulate when no hardware detected)
+# Docker (see getting-started/docker.md for the required token or opt-in)
+# --source auto is the default; serves simulated data when no hardware is detected
 
 # From source
 ./target/release/sensing-server --source simulate --http-port 3000 --ws-port 3001
@@ -343,9 +354,7 @@ docker run --network host ruvnet/wifi-densepose:latest --source wifi --tick-ms 5
 
 Uses CoreWLAN via a Swift helper binary. macOS Sonoma 14.4+ redacts real BSSIDs; the adapter generates deterministic synthetic MACs so the multi-BSSID pipeline still works. On macOS, `--source wifi` selects the CoreWLAN scanner; there is no separate `macos` value.
 
-```bash
-# Compile the Swift helper (once)
-swiftc -O archive/v1/src/sensing/mac_wifi.swift -o mac_wifi
+**Requires the `mac_wifi` helper, which is not included.** The repository ships only its Swift source (`archive/v1/src/sensing/mac_wifi.swift`); the server runs a binary named `mac_wifi` from your `PATH` and fails the scan if it is missing (`v2/crates/wifi-densepose-wifiscan/src/adapter/macos_scanner.rs`). Building it needs the Xcode Command Line Tools (it compiles with them alone). **It also needs Location Services permission:** without it, macOS redacts the SSID and BSSID, the server drops every observation, and `--source wifi` starts, reports `live_unverified` and shows no data, with no error logged. A run with the permission granted has not been validated for this guide.
 
 # Run natively
 ./target/release/sensing-server --source wifi --http-port 3000 --ws-port 3001 --tick-ms 500
@@ -353,7 +362,7 @@ swiftc -O archive/v1/src/sensing/mac_wifi.swift -o mac_wifi
 
 See [ADR-025](adr/ADR-025-macos-corewlan-wifi-sensing.md) for details.
 
-### Linux WiFi (RSSI Only)
+### Linux WiFi (not available in the sensing server)
 
 The sensing server does not have a Linux RSSI source yet. `--source wifi`
 on Linux runs the Windows `netsh` scanner, which is not present there, and
@@ -364,9 +373,14 @@ on Linux.
 
 Real Channel State Information at 20 Hz with 56-192 subcarriers. Required for pose estimation, vital signs, and through-wall sensing.
 
+The server's UDP listener binds to loopback (`127.0.0.1`) by default, so nodes on your LAN cannot reach it. Add `--udp-bind 0.0.0.0` together with `--udp-allow <node-subnet-cidr>` (the subnet your nodes are on). A routable bind with no allowlist and no `--udp-insecure-lan` makes the server exit. See the sensing server's [`SECURITY.md`](../v2/crates/wifi-densepose-sensing-server/SECURITY.md).
+
+Pass `--source esp32` explicitly. With the default `--source auto`, the server probes UDP for 2 s, then host Wi-Fi. On Windows (`netsh`; code-derived, untested), or on macOS when the `mac_wifi` helper is installed and has Location Services permission (CoreWLAN; untested), a successful Wi-Fi probe selects the `wifi` source, and the server then does not bind UDP at all, so nodes that start sending later are never heard. The boot log shows the outcome on the `Data source:` line (`udp_receiver=false` in that case). With no ESP32 and no host Wi-Fi, `auto` serves data tagged `simulated` and switches to live on the first real frame.
+
 ```bash
 # From source
-./target/release/sensing-server --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001
+./target/release/sensing-server --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001 \
+  --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 
 # Docker (use CSI_SOURCE environment variable)
 docker run -p 127.0.0.1:3000:3000 -p 127.0.0.1:3001:3001 -p 5005:5005/udp \
@@ -408,7 +422,8 @@ For higher accuracy with through-wall tracking, deploy 3-6 ESP32-S3 nodes in a *
 
 ```bash
 # Start the aggregator with multistatic mode
-./target/release/sensing-server --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001
+./target/release/sensing-server --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001 \
+  --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 ```
 
 The mesh uses a **Time-Division Multiplexing (TDM)** protocol so nodes take turns transmitting, avoiding self-interference. Key features:
@@ -443,9 +458,11 @@ cd v2
 cargo run -p wifi-densepose-sensing-server -- \
   --source esp32 \
   --udp-port 5005 \
+  --udp-bind 0.0.0.0 \
+  --udp-allow <node-subnet-cidr> \
   --http-port 3000 \
   --ws-port 3001 \
-  --ui-path ../../ui
+  --ui-path ../ui
 
 # Docker
 docker run --rm \
@@ -887,13 +904,11 @@ Full design + operator guide: [`docs/integrations/home-assistant.md`](integratio
 
 1. Inside Home Assistant, install the **Mosquitto broker** add-on from the Add-on Store and start it.
 2. In HA, **Settings → Devices & Services → Add Integration → MQTT**, point at the broker.
-3. Start the sensing-server with MQTT:
-
-   ```bash
-   docker run --rm --net=host ruvnet/wifi-densepose:0.7.0 \
-       --source esp32 --mqtt --mqtt-host <ha-host-ip>
-   ```
-4. Within ~5 seconds HA auto-creates one **device** per RuView node with 21 entities: 11 raw signals (presence, person count, HR, BR, motion, fall, RSSI, zones, pose, …) plus 10 semantic primitives (someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting, bathroom, fall-risk, bed-exit, no-movement, multi-room-transition).
+3. Start the sensing-server with `--mqtt --mqtt-host <ha-host-ip>` added to the
+   `--source esp32` command from the
+   [quickstart](getting-started/quickstart-esp32-s3.md). In Docker, add the
+   token and UDP settings from [docker.md](getting-started/docker.md) as well.
+4. Within ~5 seconds HA auto-creates one **device** per RuView node. Announces 20 entities per device (21 with `--mqtt-publish-pose`). 9 have a state publisher; in a 190 s live run, 6 published state (presence, person count, motion level, motion energy, presence score, signal strength (per-node devices only)). The other 11 (the 10 semantic states and zone occupancy, plus pose when enabled) are announced; not yet publishing (ADR-115 P4.5 pending). The raw signals are presence, person count, HR, BR, motion, fall, RSSI, zones and pose; the semantic primitives are someone-sleeping, possible-distress, room-active, elderly-inactivity-anomaly, meeting, bathroom, fall-risk, bed-exit, no-movement and multi-room-transition. How this was measured: see the [Home Assistant guide](integrations/home-assistant.md#how-this-was-measured).
 
 ### Privacy mode for healthcare / AAL
 
@@ -910,13 +925,9 @@ sensing-server --mqtt --mqtt-host <broker> --mqtt-tls --privacy-mode
 
 Presence, motion, person count, zones and the coarse posture label are still served, and semantic primitives stay published because they're inferred *states*, not biometric *values*. Some of those states (sleeping, possible distress) are derived from vitals, so they are still health-related information. Privacy mode reduces what leaves the server. It does not by itself make a deployment compliant with any regulation.
 
-### Matter Bridge (Apple Home / Google Home / Alexa / SmartThings)
+### Matter Bridge (planned, not built)
 
-```bash
-sensing-server --matter --matter-setup-file /var/run/ruview-matter.txt
-```
-
-Open `/var/run/ruview-matter.txt` for the Matter pairing QR / 11-digit setup code. Scan it from Apple Home / Google Home / your HA Matter integration. RuView appears as a Bridged Device with one occupancy endpoint per node + per zone, plus a momentary switch for fall events.
+A Matter Bridge for Apple Home / Google Home / Alexa / SmartThings is designed in [ADR-115](adr/ADR-115-home-assistant-integration.md) §3.11. It is not built: the sensing server's `matter` cargo feature is empty, its live command-line parser does not accept the `--matter*` flags, and `cog-ha-matter` defers commissioning ("not yet implemented"). Today, Google Home and Alexa reach RuView through Home Assistant, and Apple Home has a separate opt-in HAP bridge (see [What's wired](../README.md#whats-wired)).
 
 Detailed entity reference, blueprint catalog, troubleshooting recipe matrix: see [`docs/integrations/home-assistant.md`](integrations/home-assistant.md).
 
@@ -973,7 +984,7 @@ Import via HA UI: Settings → Automations & Scenes → Blueprints → Import.
 | `Raw` | full BFI matrix | local-only research (never networked) |
 | `Derived` | downsampled angles + risk score | operator-acknowledged LAN research mode |
 | `Anonymous` (default) | aggregate sensing only + risk score + rotating hash | production HA / Matter deployments |
-| `Restricted` | aggregate sensing only, identity fields stripped | care homes, GDPR/HIPAA-style regulated environments |
+| `Restricted` | aggregate sensing only, identity fields stripped | intended for care homes and GDPR/HIPAA-style regulated settings (design intent, not a compliance assessment) |
 
 The `enable_privacy_mode()` runtime toggle on `BfldPipeline` engages `Restricted` from any baseline without restarting the pipeline — useful for security-incident response.
 
@@ -1365,8 +1376,8 @@ The Rust sensing server binary accepts the following flags:
 # Simulated mode with UI (development)
 ./target/release/sensing-server --source simulate --http-port 3000 --ws-port 3001 --ui-path ../../ui
 
-# ESP32 hardware mode
-./target/release/sensing-server --source esp32 --udp-port 5005
+# ESP32 hardware mode (LAN nodes need the UDP bind and allowlist)
+./target/release/sensing-server --source esp32 --udp-port 5005 --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 
 # Windows WiFi RSSI
 ./target/release/sensing-server --source wifi --tick-ms 500
@@ -1436,7 +1447,7 @@ levels. Read the label, not the headline ([ADR-187](adr/ADR-187-archive-v1-depre
 
 | Tier | Checkpoint(s) | Honest status |
 |------|---------------|---------------|
-| **Real & validated** | [`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained) (encoder + presence head) · [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) (17-keypoint pose) · `cog-person-count/count_v1` | **MEASURED / published.** Presence = 82.3% held-out temporal-triplet accuracy (the old "100% presence" figure was retracted); MM-Fi pose = 82.69% torso-PCK@20 on the `random_split` protocol. |
+| **Published, externally reported** | [`ruvnet/wifi-densepose-pretrained`](https://huggingface.co/ruvnet/wifi-densepose-pretrained) (encoder + presence head) · [`ruvnet/wifi-densepose-mmfi-pose`](https://huggingface.co/ruvnet/wifi-densepose-mmfi-pose) (17-keypoint pose) · `cog-person-count/count_v1` | **CLAIMED (published).** v2 CSI encoder: 82.3% held-out temporal-triplet embedding-retrieval accuracy. This is not presence or occupancy accuracy (the old "100% presence" figure was retracted). MM-Fi pose: 82.69% torso-PCK@20 on MM-Fi `random_split` (not subject-disjoint; no mean-pose baseline reported). |
 | **Real but weak (honestly labeled)** | committed `v2/crates/cog-pose-estimation/cog/artifacts/pose_v1.safetensors` | First-cut on-device model. **PCK@20 = 3.0% / PCK@50 = 18.5%** on a 217-sample holdout — **below the ADR-079 target of ≥ 35%.** Learns coarse structure (`r_hip` 77% PCK@50); distal/face joints near-random. Its runtime path in `cog-pose-estimation/src/inference.rs` is still a centred-skeleton **stub returning `confidence=0`**. Full disclosure in the [cog README](../v2/crates/cog-pose-estimation/cog/README.md). Do not advertise the live single-ESP32 17-keypoint feature without this caveat. |
 | **Architecture only, no weights** | `archive/v1` `DensePoseHead` | Random `kaiming_normal_` init, **no checkpoint of any kind** (zero `.pth`/`.onnx`/`.safetensors` files under `archive/v1/`). Deprecated and superseded — see [`archive/v1/DEPRECATED.md`](../archive/v1/DEPRECATED.md). Do not expect real pose output from it. |
 
@@ -1499,7 +1510,8 @@ print({k: tuple(v.shape) for k, v in state.items()})
 
 # Sensing server — run heuristic for now:
 cargo run -p wifi-densepose-sensing-server --release -- \
-    --source esp32 --udp-port 5005 --http-port 3000
+    --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001 \
+    --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 ```
 
 See [RVF Model Containers](#rvf-model-containers) for the binary format the loader expects, and [Training a Model](#training-a-model) for using the encoder as a starting point for environment-specific fine-tuning.
@@ -1711,7 +1723,8 @@ The pipeline runs 10 phases:
 ### Step 3: Use the Trained Model
 
 ```bash
-./target/release/sensing-server --model model.rvf --progressive --source esp32
+./target/release/sensing-server --model model.rvf --progressive --source esp32 \
+  --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 ```
 
 Progressive loading enables instant startup (Layer A loads in <5ms with basic inference), with full model loading in the background.
@@ -1770,6 +1783,7 @@ The RuVector Format (RVF) packages a trained model into a single self-contained 
 ### Export
 
 ```bash
+# On its own, --export-rvf writes placeholder weights, not a trained model.
 ./target/release/sensing-server --export-rvf model.rvf
 ```
 
@@ -1911,21 +1925,21 @@ A 3-6 node ESP32-S3 mesh provides full CSI at 20 Hz. Total cost: ~$54 for a 3-no
 
 **Flashing firmware:**
 
-Pre-built binaries are available at [Releases](https://github.com/ruvnet/RuView/releases):
+Pre-built binaries are available at [Releases](https://github.com/ruvnet/RuView/releases). For the current stable release and which bundle to flash, see the [firmware README](../firmware/esp32-csi-node/README.md#0-download-the-088-release). The table below is older release history:
 
 | Release | What It Includes | Tag |
 |---------|-----------------|-----|
-| [v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0-esp32) | **Latest — ADR-110 firmware-side substrate closed.** Adds ESP-NOW mesh substrate with quantified ≤100 µs alignment (104.1 µs smoothed stdev, 3.95× suppression, 99.56 % cross-board match measured live), 32-byte sync-packet UDP emission with operator-tunable cadence, ADR-018 byte 19 bit 4 wire-fix sourced from working ESP-NOW path, Python SyncPacketParser stub for host wiring ([WITNESS-LOG-110 §A0.7-§A0.13](WITNESS-LOG-110.md)) | `v0.7.0-esp32` |
+| [v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0-esp32) | **ADR-110 firmware-side substrate closed.** Adds ESP-NOW mesh substrate with quantified ≤100 µs alignment (104.1 µs smoothed stdev, 3.95× suppression, 99.56 % cross-board match measured live), 32-byte sync-packet UDP emission with operator-tunable cadence, ADR-018 byte 19 bit 4 wire-fix sourced from working ESP-NOW path, Python SyncPacketParser stub for host wiring ([WITNESS-LOG-110 §A0.7-§A0.13](WITNESS-LOG-110.md)) | `v0.7.0-esp32` |
 | [v0.6.9](https://github.com/ruvnet/RuView/releases/tag/v0.6.9-esp32) | Sync-packet UDP emission, `CONFIG_C6_SYNC_EVERY_N_FRAMES` tunable cadence | `v0.6.9-esp32` |
 | [v0.6.8](https://github.com/ruvnet/RuView/releases/tag/v0.6.8-esp32) | ESP-NOW EMA-smoothed cross-board offset (3.95× suppression, 104 µs stdev) | `v0.6.8-esp32` |
 | [v0.6.7](https://github.com/ruvnet/RuView/releases/tag/v0.6.7-esp32) | Real LP-core motion-gate RISC-V program (B4 code path complete) + Wi-Fi 6 soft-AP with TWT Responder for two-board iTWT benches (B1/B2 unblock) | `v0.6.7-esp32` |
-| [v0.5.0](https://github.com/ruvnet/RuView/releases/tag/v0.5.0-esp32) | **Stable (S3 mesh, recommended)** — mmWave sensor fusion (MR60BHA2/LD2410 auto-detect), 48-byte fused vitals, all v0.4.3.1 fixes | `v0.5.0-esp32` |
+| [v0.5.0](https://github.com/ruvnet/RuView/releases/tag/v0.5.0-esp32) | mmWave sensor fusion (MR60BHA2/LD2410 auto-detect), 48-byte fused vitals, all v0.4.3.1 fixes | `v0.5.0-esp32` |
 | [v0.4.3.1](https://github.com/ruvnet/RuView/releases/tag/v0.4.3.1-esp32) | Fall detection fix ([#263](https://github.com/ruvnet/RuView/issues/263)), 4MB flash ([#265](https://github.com/ruvnet/RuView/issues/265)), watchdog fix ([#266](https://github.com/ruvnet/RuView/issues/266)) | `v0.4.3.1-esp32` |
 | [v0.4.1](https://github.com/ruvnet/RuView/releases/tag/v0.4.1-esp32) | CSI build fix, compile guard, AMOLED display, edge intelligence ([ADR-057](../docs/adr/ADR-057-firmware-csi-build-guard.md)) | `v0.4.1-esp32` |
 | [v0.3.0-alpha](https://github.com/ruvnet/RuView/releases/tag/v0.3.0-alpha-esp32) | Alpha — adds on-device edge intelligence (ADR-039) | `v0.3.0-alpha-esp32` |
 | [v0.2.0](https://github.com/ruvnet/RuView/releases/tag/v0.2.0-esp32) | Raw CSI streaming, TDM, channel hopping, QUIC mesh | `v0.2.0-esp32` |
 
-> **Important:** Always use **v0.4.3.1 or later**. Earlier versions have false fall detection alerts (v0.4.2 and below) and CSI disabled in the build config (pre-v0.4.1).
+> **Important:** Use the current stable release. Versions before v0.4.3.1 have false fall detection alerts (v0.4.2 and below) and CSI disabled in the build config (pre-v0.4.1).
 
 ```bash
 # Flash an ESP32-S3 with 8MB flash (most boards)
@@ -2110,7 +2124,8 @@ Binary size: 990 KB (8MB flash, 52% free) or 773 KB (4MB flash). v0.5.0 adds mmW
 
 ```bash
 # From source
-./target/release/sensing-server --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001
+./target/release/sensing-server --source esp32 --udp-port 5005 --http-port 3000 --ws-port 3001 \
+  --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 
 # Docker (see "Receiving ESP32 frames in Docker" for the UDP source guard)
 docker run -p 127.0.0.1:3000:3000 -p 127.0.0.1:3001:3001 -p 5005:5005/udp \
@@ -2449,6 +2464,10 @@ export RUVIEW_UDP_ALLOW=<node-ip-or-cidr>   # macOS Docker: <gateway>/32
 docker compose up
 ```
 
+As shipped, the `sensing-server` service exits with code 64 (no token, no
+unauthenticated opt-in) and does not bind UDP for LAN nodes. See
+[docker.md](getting-started/docker.md) before using it.
+
 This starts:
 - Rust sensing server on ports 3000 (HTTP), 3001 (WS), 5005 (UDP)
 - Python legacy server on ports 8080 (HTTP), 8765 (WS)
@@ -2757,21 +2776,15 @@ docker pull --platform linux/arm64 ruvnet/wifi-densepose:latest
 
 ### Docker: "Connection refused" on localhost:3000
 
-Make sure you're mapping the ports correctly:
-
-```bash
-docker run -p 3000:3000 -p 3001:3001 ruvnet/wifi-densepose:latest
-```
-
-The `-p 3000:3000` maps host port 3000 to container port 3000.
+First check whether the container is running at all. Without
+`RUVIEW_API_TOKEN` or `RUVIEW_ALLOW_UNAUTHENTICATED=1` it exits with code 64.
+Then make sure `-p 3000:3000` maps the port. Full command:
+[docker.md](getting-started/docker.md).
 
 ### Docker: No WebSocket data in UI
 
-Add the WebSocket port mapping:
-
-```bash
-docker run -p 3000:3000 -p 3001:3001 ruvnet/wifi-densepose:latest
-```
+Publish the WebSocket port too (`-p 3001:3001`) and open the UI through
+`http://localhost:3000/ui/`. See [docker.md](getting-started/docker.md).
 
 ### ESP32: "CSI not enabled in menuconfig"
 
@@ -2837,7 +2850,7 @@ The server applies a 3-stage smoothing pipeline (ADR-048). If readings are still
 
 - Verify the sensing server is running: `curl http://localhost:3000/health`
 - Access Observatory via the server URL: `http://localhost:3000/ui/observatory.html` (not a file:// URL)
-- If a standalone `aggregator` command is already listening on UDP `:5005`, stop it and run `sensing-server --source esp32 --udp-port 5005` instead; the Observatory reads the server WebSocket, not the standalone aggregator output
+- If a standalone `aggregator` command is already listening on UDP `:5005`, stop it and run `sensing-server --source esp32 --udp-port 5005 --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>` instead; the Observatory reads the server WebSocket, not the standalone aggregator output
 - Verify the ESP32 nodes are provisioned to the IP address of the machine running `sensing-server`
 - Hard refresh with Ctrl+Shift+R to clear cached settings
 - The auto-detect probes `/health` on the same origin — cross-origin won't work
@@ -2888,7 +2901,7 @@ Install PyYAML: `pip install pyyaml`
 ## FAQ
 
 **Q: Do I need special hardware to try this?**
-No. Run `docker run -p 3000:3000 ruvnet/wifi-densepose:latest` and open `http://localhost:3000`. Simulated mode exercises the full pipeline with synthetic data.
+No. Run the simulated demo in [docker.md](getting-started/docker.md) and open `http://localhost:3000/ui/`. Simulated mode exercises the full pipeline with synthetic data.
 
 **Q: Can consumer WiFi laptops do pose estimation?**
 No. Consumer WiFi exposes only RSSI (one number per access point), not CSI (56+ complex subcarrier values per frame). RSSI supports coarse presence and motion detection. Full pose estimation requires CSI-capable hardware like an ESP32-S3 ($8) or a research NIC.

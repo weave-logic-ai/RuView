@@ -24,6 +24,12 @@ MSYS_NO_PATHCONV=1 docker run --rm \
 
 Takes ~3 minutes cold, well under a minute incremental.
 
+**This 16 MB configuration is unreleased: build it yourself.** CI builds and
+releases only the `8mb` and `4mb` ESP32-S3 variants and the `c6-4mb` variant
+(`.github/workflows/firmware-ci.yml`). No release contains a 16 MB image, and
+rollback (`CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`) is enabled only here, in
+`sdkconfig.defaults.16mb`.
+
 ### The three defaults files are NOT all automatic
 
 IDF picks up `sdkconfig.defaults` and `sdkconfig.defaults.<target>` on its own.
@@ -49,9 +55,9 @@ cp sdkconfig "sdkconfig.backup-$(date +%Y%m%d-%H%M%S)"   # then regenerate
 ```
 
 A stale `sdkconfig` is a real hazard, not a hypothetical: one found on
-2026-09-03 said `FLASHSIZE=4MB`, `partitions_4mb.csv`,
-`DYNAMIC_TX_BUFFER_NUM=64` — against a fleet running 16MB and 128. Anything
-built from it would silently not be the configuration under test.
+2026-09-03 said `FLASHSIZE=4MB` and `partitions_4mb.csv`, against a fleet
+running 16MB. Anything built from it would silently not be the configuration
+under test.
 
 ### Verify before you flash anything
 
@@ -67,7 +73,7 @@ All five must read:
 | `CONFIG_IDF_TARGET` | `"esp32c6"` |
 | `CONFIG_ESPTOOLPY_FLASHSIZE` | `"16MB"` |
 | `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME` | `"partitions_16mb.csv"` |
-| `CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM` | `128` |
+| `CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM` | `64` |
 | `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE` | `y` |
 
 **Do not use the native `C:\Espressif\...esp-idf-v5.5.5`.** Wrong version, its

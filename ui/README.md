@@ -104,49 +104,27 @@ The Rust-based `wifi-densepose-sensing-server` serves the UI and provides:
 - `WS /ws/sensing` — real-time sensing data stream
 - `WS /api/v1/stream/pose` — real-time pose keypoint stream
 
-### Python FastAPI (legacy)
-The original Python backend on port 8000 is still supported. The UI auto-detects which backend is available via `backend-detector.js`.
+The UI talks to the server that serves it: REST calls go to the page's own origin (`config/api.config.js`), and `utils/backend-detector.js` probes `/health/live` there. The archived v1 Python FastAPI backend ([`archive/v1`](../archive/v1/), ADR-187) is not a backend for this UI.
 
 ## Quick Start
 
-### With Docker (recommended)
-```bash
-cd docker/
-
-# Default: auto-detects ESP32 on UDP 5005, falls back to simulation
-docker-compose up
-
-# Force real ESP32 data
-CSI_SOURCE=esp32 docker-compose up
-
-# Force simulation (no hardware needed)
-CSI_SOURCE=simulated docker-compose up
-```
-Open http://localhost:3000/ui/index.html
+### With Docker
+Follow [`docs/getting-started/docker.md`](../docs/getting-started/docker.md). The container refuses to start without `RUVIEW_API_TOKEN` or an explicit `RUVIEW_ALLOW_UNAUTHENTICATED=1`, and it needs the `RUVIEW_UDP_*` settings to receive frames from a node, so a bare `docker-compose up` does not work as shipped. In Docker the UI is at http://localhost:3000/ui/index.html.
 
 ### With local Rust binary
 ```bash
 cd v2
-cargo build -p wifi-densepose-sensing-server --no-default-features
+cargo build -p wifi-densepose-sensing-server
 
 # Run with simulated data
-../../target/debug/sensing-server --source simulated --tick-ms 100 --ui-path ../../ui --http-port 3000
+target/debug/sensing-server --source simulated --ui-path ../ui
 
-# Run with real ESP32
-../../target/debug/sensing-server --source esp32 --tick-ms 100 --ui-path ../../ui --http-port 3000
+# Run with a real ESP32 on your LAN. UDP binds to loopback by default, and a
+# routable bind is refused unless you allow the node's subnet.
+target/debug/sensing-server --source esp32 --ui-path ../ui \
+  --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 ```
-Open http://localhost:3000/ui/index.html
-
-### With Python HTTP server (legacy)
-```bash
-# Start FastAPI backend on port 8000
-wifi-densepose start
-
-# Serve the UI on port 3000
-cd ui/
-python -m http.server 3000
-```
-Open http://localhost:3000
+Open http://localhost:8080/ui/index.html. The native defaults are HTTP 8080 and WebSocket 8765; the UI maps 8080 to 8765 itself. For the full ESP32-S3 walkthrough, see [`docs/getting-started/quickstart-esp32-s3.md`](../docs/getting-started/quickstart-esp32-s3.md).
 
 ## Pose Estimation Modes
 

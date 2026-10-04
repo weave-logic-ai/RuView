@@ -21,6 +21,11 @@ This firmware captures WiFi Channel State Information (CSI) from an ESP32-S3 (pr
 
 ## Firmware 0.8.12: guided Mac onboarding
 
+> **Not released yet.** 0.8.12 is the version on `main`. The latest stable
+> firmware release is v0.8.8 ([Quick Start, step 0](#0-download-the-088-release)),
+> which does not include this onboarding protocol. To use it, build from
+> source ([Building](#building)).
+
 Firmware 0.8.12 adds the protocol used by the RuView macOS Add
 Sensor workflow. A directly attached S3 or C6 can identify itself through a
 nonce bound USB serial receipt, preserve its current WiFi settings, accept an
@@ -68,6 +73,9 @@ measured evidence and limitations.
 For users who want to get running fast. Detailed explanations follow in later sections.
 
 ### 0. Download the 0.8.8 release
+
+v0.8.8 is the latest stable firmware release. `main` is 0.8.12 and unreleased;
+to run it, build from source ([Building](#building)) instead of downloading.
 
 Use the versioned source tag and binaries on the
 [v0.8.8 ESP32 release page](https://github.com/ruvnet/RuView/releases/tag/v0.8.8-esp32).
@@ -171,15 +179,20 @@ python firmware/esp32-csi-node/provision.py --port COM7 \
   --ssid "YourSSID" --password "YourPass" --target-ip 192.168.1.20
 ```
 
+For multi-node IDs, the OTA key, what `provision.py` writes, and how to update or roll back firmware, see [Provisioning and OTA](../../docs/getting-started/provisioning-and-ota.md).
+
 ### 4. Start the sensing server
 
 ```bash
-cargo run -p wifi-densepose-sensing-server -- --http-port 3000 --source auto
+cargo run -p wifi-densepose-sensing-server -- --source esp32 \
+  --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 ```
+
+The UDP listener binds to loopback by default, so a node on your LAN needs `--udp-bind` and `--udp-allow` (or `--udp-insecure-lan`). Use `--source esp32` rather than `auto`: on a Mac with the optional `mac_wifi` helper installed and granted Location Services permission (untested), `auto` can pick host Wi-Fi and never listen for the node.
 
 ### 5. Open the UI
 
-Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
+Navigate to [http://localhost:8080/ui/](http://localhost:8080/ui/) in your browser. `/` is a plain info page; the dashboard is under `/ui/`.
 
 ### 6. (Optional) Upload a WASM sensing module
 
@@ -449,6 +462,8 @@ python firmware/esp32-csi-node/provision.py --port COM7 \
   --password "MyPassword" \
   --target-ip 192.168.1.20
 ```
+
+For multi-node IDs, the OTA key, what `provision.py` writes, and how to update or roll back firmware, see [Provisioning and OTA](../../docs/getting-started/provisioning-and-ota.md).
 
 ### NVS Key Reference
 
@@ -910,17 +925,19 @@ No physical ESP32 hardware is needed in CI.
 
 ## Troubleshooting
 
+Firmware-specific symptoms are below. For symptoms that span the node and the server (0 pps, no frames, "Connecting…", OTA failures, person count stuck at 1), start at [Troubleshooting](../../docs/getting-started/troubleshooting.md).
+
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | No serial output | Wrong baud rate | Use `115200` in your serial monitor |
 | WiFi won't connect | Wrong SSID/password | Re-run `provision.py` with correct credentials |
-| No UDP frames received | Firewall blocking | Allow inbound UDP on port 5005 (see below) |
+| No UDP frames received | Server listening on loopback only, or firewall blocking | Start the server with `--udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>`; allow inbound UDP on port 5005 (see below) |
 | `idf.py` fails on Windows | Git Bash/MSYS2 incompatibility | Use Docker -- this is the only supported build method on Windows |
 | CSI callback not firing | Promiscuous mode issue | Verify `esp_wifi_set_promiscuous(true)` in `csi_collector.c` |
 | WASM upload rejected | Signature verification | Disable with `wasm_verify=0` via NVS for development, or sign with Ed25519 |
 | High frame drop rate | Ring buffer overflow | Reduce `edge_tier` or increase `dwell_ms` |
 | Vitals readings unstable | Calibration period | Wait 60 seconds for adaptive threshold to settle |
-| OTA update fails | Binary too large | Check binary is < 1 MB; current headroom is ~6% |
+| OTA update fails with 403 | No OTA key in NVS (`security/ota_psk`); OTA is fail-closed | `provision.py` cannot set the key yet; reflash over USB. See [Provisioning and OTA](../../docs/getting-started/provisioning-and-ota.md) |
 | Docker path error on Windows | MSYS path conversion | Prefix command with `MSYS_NO_PATHCONV=1` |
 
 ### Windows Firewall Rule
