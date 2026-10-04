@@ -72,6 +72,8 @@ The lock file pins: `numpy==1.26.4`, `scipy==1.14.1`, `pydantic==2.10.4`, `pydan
 
 ## 2. Python Pipeline (v1/)
 
+> **Historical (v1, archived).** The v1 Python pipeline now lives in [`archive/v1/`](../archive/v1/) and is deprecated ([ADR-187](adr/ADR-187-archive-v1-deprecation-honest-labeling.md), [`archive/v1/DEPRECATED.md`](../archive/v1/DEPRECATED.md)). The FastAPI server below (port 8000) is not the current server; run the Rust `sensing-server` instead ([§3](#3-rust-pipeline-v2), [Getting started](getting-started/README.md)). Paths below that say `v1/` now live under `archive/v1/`. The verification-only install still applies to the deterministic proof in §1.
+
 The Python pipeline lives under `v1/` and provides the full API server, signal processing, sensing modules, and WebSocket streaming.
 
 ### Prerequisites
@@ -290,6 +292,8 @@ To see live data:
 ---
 
 ## 5. Docker Deployment
+
+> **Historical (v1).** This section describes the v1 FastAPI stack. The repository has no root `Dockerfile` or compose file, so the commands below do not run as written, and `docker/docker-compose.yml` now starts the Rust sensing server. For the current Docker path, see [Getting started: Docker](getting-started/docker.md).
 
 ### Development (with hot-reload, Postgres, Redis, Prometheus, Grafana)
 

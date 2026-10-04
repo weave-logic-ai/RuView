@@ -396,23 +396,17 @@ pip install wifi-densepose[all]   # All optional deps
 ```bash
 # Rust sensing server (132 MB — recommended)
 docker pull ruvnet/wifi-densepose:latest
-docker run -p 3000:3000 -p 3001:3001 -p 5005:5005/udp ruvnet/wifi-densepose:latest
+# Run it: see getting-started/docker.md (a token and UDP settings are required)
 
-# Python sensing pipeline (569 MB)
-docker pull ruvnet/wifi-densepose:python
-docker run -p 8765:8765 -p 8080:8080 ruvnet/wifi-densepose:python
-
-# Both via docker-compose
-cd docker && docker compose up
-
-# Export RVF model
-docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
+# Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
+# Local one-shot export: no ports are published, so the unauthenticated opt-in is safe here.
+docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
 | Image | Tag | Platforms | Ports |
 |-------|-----|-----------|-------|
 | `ruvnet/wifi-densepose` | `latest`, `rust` | linux/amd64, linux/arm64 | 3000 (REST), 3001 (WS), 5005/udp (ESP32) |
-| `ruvnet/wifi-densepose` | `python` | linux/amd64 | 8765 (WS), 8080 (UI) |
+| `ruvnet/wifi-densepose` | `python` | linux/amd64 | Legacy: runs the retired v1 path. Do not use. |
 
 </details>
 
@@ -485,7 +479,7 @@ All crates integrate with [RuVector v2.0.4](https://github.com/ruvnet/ruvector) 
 ```bash
 # Fastest path — Docker
 docker pull ruvnet/wifi-densepose:latest
-docker run -p 3000:3000 ruvnet/wifi-densepose:latest
+# Run it: see getting-started/docker.md (the container needs a token or an explicit opt-in)
 
 # Or from source (Rust)
 ./install.sh --profile rust --yes
@@ -869,11 +863,11 @@ ESP32-S3 node                    UDP/5005        Host server (optional)
 
 ### Flash and provision
 
-Download a pre-built binary — no build toolchain needed:
+Download a pre-built binary — no build toolchain needed. For the current stable firmware release and which bundle to flash, see the [firmware README](../firmware/esp32-csi-node/README.md#0-download-the-088-release); the table below is older release history:
 
 | Release | What's included | Tag |
 |---------|-----------------|-----|
-| [v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0) | **Latest** — Camera-supervised WiFlow model (accuracy figure retracted 2026-06-10, see above), ground-truth training pipeline, ruvector optimizations | `v0.7.0` |
+| [v0.7.0](https://github.com/ruvnet/RuView/releases/tag/v0.7.0) | Camera-supervised WiFlow model (accuracy figure retracted 2026-06-10, see above), ground-truth training pipeline, ruvector optimizations | `v0.7.0` |
 | [v0.6.0](https://github.com/ruvnet/RuView/releases/tag/v0.6.0-esp32) | [Pre-trained models on HuggingFace](https://huggingface.co/ruv/ruview), 17 sensing apps, 51.6% contrastive improvement, 0.008ms inference | `v0.6.0-esp32` |
 | [v0.5.5](https://github.com/ruvnet/RuView/releases/tag/v0.5.5-esp32) | SNN + MinCut (#348 fix) + CNN spectrogram + WiFlow + multi-freq mesh + graph transformer | `v0.5.5-esp32` |
 | [v0.5.4](https://github.com/ruvnet/RuView/releases/tag/v0.5.4-esp32) | Cognitum Seed integration ([ADR-069](docs/adr/ADR-069-cognitum-seed-csi-pipeline.md)), 8-dim feature vectors, RVF store, witness chain, security hardening | `v0.5.4-esp32` |
@@ -1204,14 +1198,15 @@ The [RuVector Format (RVF)](https://github.com/ruvnet/ruvector/tree/main/crates/
 | **CLI** | `--export-rvf` (generate), `--load-rvf` (config), `--save-rvf` (persist), `--model` (inference), `--progressive` (3-layer load) |
 
 ```bash
-# Export model package
+# Export model package (on its own, --export-rvf writes placeholder weights, not a trained model)
 ./target/release/sensing-server --export-rvf wifi-densepose-v1.rvf
 
 # Load and run with progressive loading
 ./target/release/sensing-server --model wifi-densepose-v1.rvf --progressive
 
-# Export via Docker
-docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
+# Export via Docker (on its own, --export-rvf writes placeholder weights, not a trained model)
+# Local one-shot export: no ports are published, so the unauthenticated opt-in is safe here.
+docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
 Built on the [rvf](https://github.com/ruvnet/ruvector/tree/main/crates/rvf) crate family (rvf-types, rvf-wire, rvf-manifest, rvf-index, rvf-quant, rvf-crypto, rvf-runtime). See [ADR-023](docs/adr/ADR-023-trained-densepose-model-ruvector-pipeline.md).
@@ -1491,8 +1486,8 @@ graph TB
 # Start with simulated data (no hardware)
 ./target/release/sensing-server --source simulate --ui-path ../../ui
 
-# Start with ESP32 CSI hardware
-./target/release/sensing-server --source esp32 --udp-port 5005
+# Start with ESP32 CSI hardware (LAN nodes need the UDP bind and allowlist)
+./target/release/sensing-server --source esp32 --udp-port 5005 --udp-bind 0.0.0.0 --udp-allow <node-subnet-cidr>
 
 # Start with Windows WiFi RSSI
 ./target/release/sensing-server --source wifi
@@ -1500,7 +1495,7 @@ graph TB
 # Run vital sign benchmark
 ./target/release/sensing-server --benchmark
 
-# Export RVF model package
+# Export RVF model package (on its own, --export-rvf writes placeholder weights, not a trained model)
 ./target/release/sensing-server --export-rvf model.rvf
 
 # Train a model
@@ -1711,17 +1706,11 @@ python -m pytest archive/v1/tests/ -v
 ```bash
 # Rust sensing server (132 MB)
 docker pull ruvnet/wifi-densepose:latest
-docker run -p 3000:3000 -p 3001:3001 -p 5005:5005/udp ruvnet/wifi-densepose:latest
+# Run it: see getting-started/docker.md (a token and UDP settings are required)
 
-# Python pipeline (569 MB)
-docker pull ruvnet/wifi-densepose:python
-docker run -p 8765:8765 -p 8080:8080 ruvnet/wifi-densepose:python
-
-# Both via docker-compose
-cd docker && docker compose up
-
-# Export RVF model
-docker run --rm -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
+# Export RVF model (on its own, --export-rvf writes placeholder weights, not a trained model)
+# Local one-shot export: no ports are published, so the unauthenticated opt-in is safe here.
+docker run --rm -e RUVIEW_ALLOW_UNAUTHENTICATED=1 -v $(pwd):/out ruvnet/wifi-densepose:latest --export-rvf /out/model.rvf
 ```
 
 ### Environment Variables
