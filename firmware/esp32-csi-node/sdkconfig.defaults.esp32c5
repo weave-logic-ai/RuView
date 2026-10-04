@@ -51,6 +51,14 @@ CONFIG_ESP_WIFI_CSI_ENABLED=y
 # on C5 as on C6. On C5 HE spans BOTH bands. WPA3 is opt-in:
 CONFIG_ESP_WIFI_ENABLE_WPA3_SAE=y
 
+# ADR-368 P2 finding (2026-10-04): TWT negotiation locks up the C5 *preview*
+# WiFi driver when the associated AP does not support iTWT — observed a hard
+# CPU_LOCKUP immediately after the "Connected AP does not support setup
+# individual TWT agreement" error, right after the first CSI callback. TWT is a
+# power-saving feature, not needed for CSI qualification, so disable it for C5
+# bring-up. Revisit with a TWT-capable AP or a newer (non-preview) C5 WiFi blob.
+CONFIG_C6_TWT_ENABLE=n
+
 # ── 802.15.4 (ADR-110 P4) ──
 # PHY available on C5 as on C6, but DISABLED at runtime for the same reason:
 # the raw 15.4 RX path never delivered a frame on our C6 (ruvnet/RuView#762),

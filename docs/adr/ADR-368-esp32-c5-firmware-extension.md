@@ -116,9 +116,17 @@ to exercise the band that is its reason for being.
 | bootloader SHA-256 | recorded | `a523d2c877fe719e4f780a3f76ab740800187524fbf6daabe427320ee4c4ecf5` |
 | flash + hash verify on silicon | **PASS** | `Wrote 1,152,000 B @ 0x20000 … Hash of data verified`; `--chip esp32c5` (2026-10-04) |
 | boots + runs on C5 | **PASS** | serial: `ESP32-C5 CSI Node (ADR-018 / ADR-110) — v0.8.12 — Node ID: 1`; CSI collector + bounded serial onboarding up; 240 MHz; coredump partition live; **WiFi `band mode:0x3` (dual-band 2.4+5 GHz active)** (2026-10-04) |
-| physical CSI rate (≥ 20 pps raw) | **PENDING** | needs WiFi provision + aggregator + RF setup |
+| WiFi join + CSI capture on silicon | **PASS (partial)** | provisioned (NVS), joined WiFi (`Got IP 192.168.1.238`), auto-detected AP ch 5, promiscuous CSI up, **first CSI callback fired** (`CSI cb #1: len=106 rssi=-42 ch=5`) (2026-10-04) |
+| continuous-run stability | **FIXED (needs re-verify)** | hit `CPU_LOCKUP` ~1 s in, immediately after `AP does not support setup individual TWT agreement` → **TWT on the C5 preview WiFi driver locks up against a non-iTWT AP**. Fixed: `CONFIG_C6_TWT_ENABLE=n` in the C5 overlay. Re-verify after a board power-cycle (preview silicon wedges in a ROM-stage `TG0_WDT` loop after many rapid flash/reset cycles). |
+| physical CSI rate (≥ 20 pps raw) | **PENDING** | 5-min `:8032` poll once the TWT-off image runs stably (needs power-cycle) |
 | DSP cadence (±1 Hz of configured) | **PENDING** | measure, then pin `CONFIG_EDGE_DSP_SAMPLE_HZ` |
-| 5 GHz HE CSI frame (256-bin, PPDU 0x01) | **PENDING** | capture; confirms IDF 5.5.0-vs-5.5.2 HE path |
+| 5 GHz HE CSI frame (256-bin, PPDU 0x01) | **PENDING** | capture on UNII-1; confirms IDF 5.5.0-vs-5.5.2 HE path |
+
+Provisioning note: `provision.py flash_nvs` needs `--no-stub` for the C5 preview
+target (the flasher stub isn't available; without it the NVS write silently
+fails MD5 verify and leaves the partition at 0xFF, which then ROM-loops). Fixed
+in `provision.py` (ADR-368). Flash/reset state on the preview silicon is
+fragile — a clean power-cycle recovers a wedged board.
 
 ## 4. Implementation phases
 
@@ -128,8 +136,11 @@ to exercise the band that is its reason for being.
   prints the `ESP32-C5 CSI Node` banner, brings up the CSI collector and bounded
   serial onboarding, runs at 240 MHz with the WiFi stack in dual-band mode
   (`band mode:0x3`). `RUVIEW_HELLO_V1` handshake over USB-JTAG still to exercise.
-- **P3 — CSI capture on 2.4 GHz:** provision, confirm raw CSI yield ≥ 20 pps and
-  a stable DSP cadence; measure and pin the C5 DSP rate.
+- **P3 — CSI capture on 2.4 GHz (in progress):** provisioned via `provision.py`
+  (`--no-stub` fix); joined WiFi, CSI callback confirmed firing on C5. Blocked on
+  continuous-run stability by the TWT lockup (now fixed: `C6_TWT_ENABLE=n`) — after
+  a power-cycle, run 5 min and confirm raw yield ≥ 20 pps + stable DSP, then pin
+  `CONFIG_EDGE_DSP_SAMPLE_HZ`.
 - **P4 — 5 GHz dual-band CSI:** provision a UNII-1 channel (36/40/44); confirm HE
   frame is 256-bin (bump IDF to 5.5.2+ if it is 64-bin HT).
 - **P5 — Validation record + evidence gate:** emit
