@@ -91,6 +91,18 @@ This is the distinction that decides whether a change needs a cable.
 | storage (fat) | `0x830000` | no |
 | nvs | `0x9000` | never written by a flash — provisioning survives |
 
+**OTA is refused until the node has a key.** `POST /ota` fails closed while
+NVS `security/ota_psk` is empty (RuView#596). Set it once over USB, from a
+file holding 64 hex characters, never on the command line:
+
+```bash
+python provision.py --port <port> --ota-psk-file ~/.config/ruview/ota.psk
+```
+
+The state file remembers the path, not the key, so later re-provisioning keeps
+it. Uploads then send `Authorization: Bearer <key>` over plain LAN HTTP, so
+treat the key as sniffable on that network.
+
 **OTA replaces the app partition only.** Anything in the bootloader —
 `CONFIG_BOOTLOADER_*`, notably `APP_ROLLBACK_ENABLE` — or any partition-table
 change **requires USB on every board**.

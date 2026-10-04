@@ -59,5 +59,50 @@ class ProvisionConfigValueTests(unittest.TestCase):
         self.assertEqual(values_by_key["swarm_ingest"], "3")
 
 
+class OtaPskTests(unittest.TestCase):
+    PSK = "ab" * 32
+
+    def psk_file(self, content):
+        import tempfile
+        f = tempfile.NamedTemporaryFile("w", suffix=".psk", delete=False)
+        self.addCleanup(Path(f.name).unlink)
+        f.write(content)
+        f.close()
+        return f.name
+
+    def test_ota_psk_file_counts_as_config_value(self):
+        path = self.psk_file(self.PSK + "\n")
+        self.assertTrue(provision.has_config_value(make_args(ota_psk_file=path)))
+
+    def test_psk_is_written_to_the_security_namespace(self):
+        path = self.psk_file(self.PSK.upper() + "\n")
+        rows = csv_rows(provision.build_nvs_csv(make_args(ota_psk_file=path, zone="z")))
+        keys = [(row["key"], row["type"]) for row in rows]
+        security = keys.index(("security", "namespace"))
+        self.assertLess(keys.index(("zone_name", "data")), security,
+                        "csi_cfg keys must stay in the csi_cfg namespace")
+        self.assertEqual(rows[security + 1]["key"], "ota_psk")
+        self.assertEqual(rows[security + 1]["value"], self.PSK)
+
+    def test_no_psk_file_means_no_security_namespace(self):
+        rows = csv_rows(provision.build_nvs_csv(make_args(zone="z")))
+        self.assertNotIn("security", [row["key"] for row in rows])
+
+    def test_malformed_psk_is_refused(self):
+        for bad in ("", "ab" * 31, "ab" * 33, "zz" * 32):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    provision.read_ota_psk(self.psk_file(bad))
+
+    def test_state_keeps_the_path_not_the_key(self):
+        path = self.psk_file(self.PSK)
+        merged = provision.merge_state_into_args(make_args(ota_psk_file=path), {})
+        self.assertEqual(merged["ota_psk_file"], path)
+        self.assertNotIn(self.PSK, str(merged))
+        later = make_args(zone="z")
+        provision.merge_state_into_args(later, merged)
+        self.assertEqual(later.ota_psk_file, path, "re-provisioning must keep the PSK")
+
+
 if __name__ == "__main__":
     unittest.main()
